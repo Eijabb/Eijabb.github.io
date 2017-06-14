@@ -1,0 +1,986 @@
+<html>
+
+	<head>
+		<meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+		<title>Bryan's Home Page</title>
+	</head>
+
+	<body bgcolor="white">
+		<font size="5">Welcome to Bryan's Home Page for MARC-related Perl code</font>
+		<p>
+		<hr>
+		</p>
+		<p>My name is Bryan Baldus. I was a cataloger at Quality Books, Inc., in Oregon, Illinois, until May 2017.</p>
+		<p>This page has been set up, initially, to distribute a number of Perl scripts (and modules) I have written to deal with MARC21/USMARC records.</p>
+		<p>Please see the <a href="manifest.htm">manifest.htm</a> and <a href="readme.htm">readme.htm</a> for more information, along with the modules and scripts themselves.</p>
+		<p>Perl code files on the site end in txt to facilitate downloading. Change to .pm for BBMARC, Lintadditions, Errorchecks, and CodeData (MARC::Lint::CodeData) and to .pl for the others.</p>
+		<p>The above mentioned modules, are based on or extensions to the <a href="http://marcpm.sourceforge.net">MARC::Record</a> distribution, and are named MARC::[module name] (with CodeData being in a MARC::Lint directory).<br>
+		They are referred to on this site as either *.pm or MARC::*.</p>
+		<p>The modules contain a number of known issues/to-do lists, and some checks are specific to Quality Books Inc.'s records.</p>
+		<p>
+		<hr>
+		</p>
+		<p><font size="4">Site arrangement:</font></p>
+		<p><a href="bryanmodules/">bryanmodules</a></p>
+		<p><a href="fullrecscripts/">fullrecscripts</a></p>
+		<p><a href="cleanupscripts/">cleanupscripts</a></p>
+		<p><a href="inprocess/">inprocess</a></p>
+		<p><a href="prevversions/">prevversions</a></p>
+		<p>Each directory's contents are described in <a href="manifest.htm">manifest.htm</a></p>
+		<p>
+		<hr>
+		</p>
+		<p><font size="4">Changes:</font></p>
+		<p><b>(June 13, 2017)</b></p>
+		<p>Initial upload to GitHub</p>
+
+		<p><b>(July 1, 2015)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Lint.pm</b></a>:</p>
+		<ul>
+			<li>Updated Lint::DATA section with Update No. 19 (Oct. 2014) through Update No. 20 (April 2015)
+			<li>Lint::CodeData updated to version 1.35 with 6xx source codes through June 26, 2015.
+		</ul>
+
+		<p><b>(July 20, 2014)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Lint.pm</b></a>:</p>
+		<ul>
+			<li>Updated Synopsis example to account for repeatable 250 (and added example of non-repeatable field using 040).
+			<li>Updated Lint::DATA section with Update No. 17 (Sept. 2013) through Update No. 18 (April 2014)
+			<li>Lint::CodeData updated to version 1.34 with 6xx source codes through June 9, 2014.
+		</ul>
+
+
+		<p><b>(Sept. 2, 2013)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.18: Updated Oct. 8, 2012 to June 22, 2013. Released , 2013.</p>
+		<ul>
+			<li>Updated _check_music_bytes for MARC Update 16 (Sept. 2012), adding 'l' as valid for 008/20.
+		</ul>
+		
+		<p><b>(June 23, 2013)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.17: Updated Oct. 8, 2012 to June 22, 2013. Released June 23, 2013.</p>
+		<ul>
+			<li>Updated check_490vs8xx($record) to look only for 800, 810, 811, 830 rather than any 8XX.
+			<li>Added functionality to deal with RDA records.
+			<li>Updated parse008vs300b($illcodes, $field300subb, $record_is_RDA) to pass 3rd variable, "$record_is_RDA".
+			<li>Updated _check_music_bytes for MARC Update 15 (Sept. 2012), adding 'k' as valid for 008/20.
+		</ul>
+		<p><b>(Aug. 6, 2012)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.16: Updated May 16-Nov. 14, 2011. Released July 7, 2012.</p>
+		<ul>
+			<li>Removed MARC::Lint::CodeData and require MARC::Lint
+			<li>Turned off check_fieldlength($record) in check_all_subs()
+			<li>Turned off checking of floating hyphens in 520 fields in findfloatinghyphens($record)
+			<li>Updated validate008 subs (and 006) related to 008/24-27 (Books and Continuing Resources) for MARC Update no. 10, Oct. 2009 and Update no. 11, 2010; no. 12, Oct. 2010; and no. 13, Sept. 2011.
+			<li>Updated %ldrbytes with leader/18 'c' and redefinition of 'i' per MARC Update no. 12, Oct. 2010.
+		</ul>
+		<p>Version 1.15: Updated June 24-August 16, 2009. Released internally.</p>
+		<ul>
+			<li>Updated checks related to 300 to better account for electronic resources.
+			<li>Revised wording in validate008($field008, $mattype, $biblvl) language code (008/35-37) for '   '/zxx.
+			<li>Updated validate008 subs (and 006) related to 008/24-27 (Books and Continuing Resources) for MARC Update no. 9, Oct. 2008.
+			<li>Updated validate008 sub (and 006) for Books byte 33, Literary form, invalidating code 'c' and referring it to 008/24-27 value 'c' .
+			<li>Updated video007vs300vs538($record) to allow Blu-ray in 538 and 's' in 07/04.
+		</ul>
+
+		<p><a href="bryanmodules/"><b>Lintadditions.pm</b></a>:</p>
+		<p>Version 1.15: Updated May 21, 2012. Released Aug. 6, 2012.</p>
+		<ul>
+			<li>Updated check_082() for editions 23 and 15 of Dewey.
+			<li>Updated check_6xx subs to ignore punctuation checking on all but certain headings (locally, ignores all but LCSH, LCAC, and Sears).
+		</ul>
+		<p>Version 1.14: Updated July 6, 2009. Released 2009.</p>
+		<ul>
+			<li>Updated validate007( \@bytesfrom007 ) bytes to account for 007/04 (Videorecordings) value of 's' for Blu-ray, from MARC Update no. 9, Oct. 2008.
+			<li>Updated validate007( \@bytesfrom007 ) bytes to allow pipe character (for No attempt to code). Previously, while this character was allowed by the MARC documentation, it was disallowed in Lintadditions due to local QBI practice (the character may be incompatible with old cataloging software).
+			<li>Revised capitalization of Cutter.
+		</ul>
+
+
+		<p><a href="inprocess/"><b>MARC::Global_Replace.pm</b></a>:</p>
+		<p>Version 0.07--Updated May 8, 2010. Released Aug. 2, 2012</p>
+		<ul>
+			<li>Revised identify_changed_hdgs($field, \%heading_data) to better deal with new headings that are shortened versions of old headings (for example, Tigers->Tiger). Still working out false hits vs. non-hits.
+		</ul>
+
+		<p><b>(July 28, 2009)</b></p>
+		<p>New scripts (fullrecscripts/Cleanup_full_recs):</p>
+
+		<p><a href="fullrecscripts/Cleanup_full_recs/"><b>008langblanktozxx.txt</b></a>: Converts 008/35-37 from 3 blank spaces to zxx.</p>
+		<p><a href="fullrecscripts/Cleanup_full_recs/"><b>440to490-830.txt</b></a>: Converts 440 to 490-830 pairs.</p>
+
+		<p><b>(May 25, 2008)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+
+		<p>Version 1.14: Updated Oct. 21, 2007, Jan. 21, 2008, May 20, 2008. Released May 25, 2008.</p>
+
+		<ul>
+			<li>Updated %ldrbytes with leader/19 per Update no. 8, Oct. 2007. Check for validity of leader/19 not yet implemented.
+			<li>Updated _check_book_bytes with code '2' ('Offprints') for 008/24-27, per Update no. 8, Oct. 2007.
+			<li>Updated check_245ind1vs1xx($record) with TODO item and comments
+			<li>Updated check_bk008_vs_300($record) to allow "leaves of plates" (as opposed to "leaves", when no p. or v. is present), "leaf", and "column"(s).
+			<li>Updated test in Errorchecks.t to remove check for LCCN starting with year greater than the current year. This was at 2008, which is no longer later. A test may be implemented in the future that will be less likely to break with the passage of time.
+		</ul>
+
+		<p><b>(Oct. 21, 2007)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Lintadditions.pm</b></a>:</p>
+		<p>Version 1.13: Updated Oct. 21, 2007. Released Oct. 21, 2007.</p>
+		<ul>
+			<li>Updated check_100 (and by call, all check_1xx, check_7xx, and check_8xx):
+			<ul>
+				<li>Non-numeric reduced from non-digits to [0-5, 79], since 6 and 8 follow different rules.
+				<li>Added check for punctuation preceding $e.
+			</ul>
+			<li>Updated check_260, check_440, and check_490 to deal with subfield 6 being 1st when checking for subfield a as first subfield.
+		</ul>
+
+		<p><b>(Oct. 3, 2007)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.13: Updated Aug. 26, 2007. Released Oct. 3, 2007.</p>
+		<ul>
+			<li>Uncommented valid MARC 21 leader values in %ldrbytes to remove local practice. Libraries wishing to restrict leader values should comment out individual bytes to enable errors when an unwanted value is encountered.
+			<li>Added ldrvalidate.t.pl and ldrvalidate.t tests.
+			<li>Includes version 1.18 of MARC::Lint::CodeData.
+		</ul>
+		<p><a href="bryanmodules/"><b>MARC::Lint::CodeData.pm</b></a>:</p>
+		<p>Versions 1.15 to 1.18: Updated Feb. 28, 2007-Aug. 14, 2007.</p>
+		<ul>
+			<li>Added new source codes from Technical Notice of Aug. 13, 2007.
+			<li>Added new source codes from Technical Notice of July 13, 2007.
+			<li>Added new source codes from Technical Notice of Apr. 5, 2007.
+			<li>Added new country and geographic codes from Technical Notice of Feb. 28, 2007.
+			<li>Added 'yu ' to list of obsolete codes.
+		</ul>
+		<p><a href="bryanmodules/"><b>Lintadditions.pm</b></a>:</p>
+		<p>Version 1.12: Updated Mar. 1-Aug 26, 2007. Released Oct. 3, 2007.</p>
+		<ul>
+			<li>Updated check_042 with new code, ukblderived, from Technical Notice for Aug. 13, 2007.
+			<li>Updated check_042 with new code, scipio, from Technical Notice for Mar. 1, 2007.
+			<li>Updated check_xxx methods (check_250) to account for subfield '6' as 1st subfield.
+		</ul>
+		<p>
+
+		<p><b>(Feb. 25, 2007)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.12: Updated July 5-Nov. 17, 2006. Released Feb. 25, 2007.</p>
+		<ul>
+			<li>Updated check_bk008_vs_300($record) to look for extra p. or v. after parenthetical qualifier.
+			<li>Updated check_bk008_vs_300($record) to look for missing period after 'col' in subfield 'b'.
+			<li>Replaced $field-tag() with $tag in error message reporting in check_nonpunctendingfields($record).
+			<li>Turned off 50-field limit check in check_fieldlength($record).
+			<li>Updated parse008vs300b($illcodes, $field300subb) to look for /map[ \,s]/ rather than just 'map' when 008 is coded 'b'.
+			<li>Updated check_bk008_vs_bibrefandindex($record) to look for spacing on each side of parenthetical pagination.
+			<li>Updated check_internal_spaces($record) to report 10 characters on either side of each set of multiple internal spaces.
+			<li>Uncommented level-5 and level-7 leader values as acceptable. Level-3 is still commented out, but could be uncommented for libraries that allow it.
+			<li>Includes version 1.14 of MARC::Lint::CodeData.
+		</ul>
+		<p><a href="bryanmodules/"><b>MARC::Lint::CodeData.pm</b></a>:</p>
+		<p>Versions 1.09 to 1.14: Updated June 26, 2006-Jan. 8, 2007.</p>
+		<ul>
+			<li>Added new source codes from Technical Notice of Jan. 5, 2007.
+			<li>Added new source codes from Technical Notice of Nov. 14, 2006.
+			<li>Added new source code from Technical Notice of Oct. 19, 2006.
+			<li>Added new source codes from Technical Notice of Oct. 17, 2006.
+			<li>Added new source codes from Technical Notice of Aug. 29, 2006.
+			<li>Added new source codes from Technical Notice of June 23, 2006.
+		</ul>
+		<p><a href="bryanmodules/"><b>Lintadditions.pm</b></a>:</p>
+		<p>Version 1.11: Updated June 12, 2006-Feb. 7, 2007. Released Feb. 25, 2007.</p>
+		<ul>
+			<li>Updated check_130(), check_6xx, and check_7xx to check for proper punctuation before subfield _l.
+			<li>Updated check_240() to allow ? and ! before subfield _l, based on LCRI revision in 2006.
+			<li>Updated check_050() to report error if subfield _a doesn't start with capital letters followed by digits.
+			<li>Updated check_050() to report error if subfield _a ends in capital letter.
+			<li>Replaced $field-&gt;tag() in warning statements with $tagno.
+			<li>Revised $2 validation to split on '/', thus ignoring edition and language additions on valid codes
+			<li>Updated check_440 to look for miscoded 2nd ind. using MARC::Lint::_check_article().
+			<li>Updated 130, 240, 630, 730, and 830 checks to look for article, using MARC::Lint::_check_article().
+			<li>Updated check_042() with source code from technical notice of Sept. 29, 2006.
+			<li>Added TO DO item for determining whether check_130, 630, and 730 can use the same code.
+		</ul>
+		<p>Script updates:</p>
+		<p><a href="inprocess/">LCSHchangesparserpl110.txt</a></p>
+		<p>Version 1.10: Updated Dec. 7, 2006</p>
+		<ul>
+			<li>Revised parsing to allow ! within heading (e.g., !Xu)
+		</ul>
+		<p>Version 1.09: Updated Sept. 8, 2006</p>
+		<ul>
+			<li>Misc. fixes, including:
+			<ul>
+				<li>Closing up spaces in 682 fields
+				<li>Parsing of new 1xx with [proposed update]
+			</ul>
+		</ul>
+		<p>Version 1.08: Updated Sept. 4, 2006</p>
+		<ul>
+			<li>Reports filename of files containing AC headings (new or changed) in AC headings section.
+		</ul>
+		<p>New Module in process:</p>
+		<p><a href="inprocess/"><b>MARC::Lint::Lint_Authority.pm</b></a>: </p>
+		<p>Version 0.01--Feb. 21, 2007. Posted Feb. 25, 2007</p>
+		<ul>
+			<li>Initial version.
+		</ul>
+
+		<p><b>(June 19, 2006)</b></p>
+		<p>Module updates:</p>
+		<p><a href="inprocess/"><b>MARC::Global_Replace.pm</b></a>:</p>
+		<p>Version 0.06--Updated June 18, 2006. Released June 19, 2006.</p>
+		<ul>
+			<li>Added subs for personal names--closed date reporting.
+			<li>Added bin/parsedeathdateslists.pl for parsing a directory of html saves from OCLC's closed date archive into a plain text tab-delimited list of old-new name pairs for use with bin/globalreplaceidentnames.pl.
+		</ul>
+		<p><b>(June 6, 2006)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.11: Updated June 5, 2006. Released June 6, 2006.</p>
+		<ul>
+			<li>Implemented check_006($record) to validate 006 (currently only does length check).
+			<ul>
+				<li>Revised validate008($field008, $mattype, $biblvl) to use internal sub for material specific bytes (18-34)
+			</ul>
+			<li>Revised validate008($field008, $mattype, $biblvl) language code (008/35-37) to report new 'zxx' code availability when ' ' (3-blanks) is the code in the record.
+			<li>Added 'mgmt.' to %abbexceptions for check_nonpunctendingfields($record).
+		</ul>
+		<p><a href="bryanmodules/"><b>MARC::Lint::CodeData.pm</b></a>:</p>
+		<p>(Most current version is available through CVS on SourceForge with MARC::Lint.)</p>
+		<ul>
+			<li>Versions 1.05-1.08 were updated with additions of codes from technical notices.
+		</ul>
+		<p><a href="bryanmodules/"><b>Lintadditions.pm</b></a>:</p>
+		<p>Version 1.10: Updated Oct. 17, 2005-May 18, 2006. Released June 6, 2006.</p>
+		<ul>
+			<li>Added check_024() for UPC and EAN validation. Uses Business::Barcode::EAN13 and Business::UPC for these checks.
+			<li>check_042() updated with valid source codes from MARC list for sources.
+			<li>check_050() updated to report cutters not preceded by period.
+			<li>Misc. bug fixes, including turning off uninitialized warnings for short 007 bytes.
+		</ul>
+		<p><a href="inprocess/"><b>MARC::Global_Replace.pm</b></a>:</p>
+		<p>Version 0.05--Updated May 1, 2006. Released June 6, 2006.</p>
+		<ul>
+			<li>Revised identify_changed_hdgs($field, \%heading_data, \%changed_hdgs_sub_a) attempting to resolve problem of closed dates vs. open.
+		</ul>
+		<p>Version 0.04--Updated Feb. 13, 2006. Unreleased</p>
+		<ul>
+			<li>Modified identify_changed_hdgs($field, \%heading_data, \%changed_hdgs_sub_a) to not report headings where new and old are identical.
+			<ul>
+				<li>Need to strip ending periods for match to work!!
+				<li>Testing needed for sears heading changes--currently appears to fail to match
+			</ul>
+		</ul>
+		<p>Script updates:</p>
+		<p><a href="inprocess/">LCSHchangesparserpl107.txt</a></p>
+		<p>Version 1.07: Updated May 8, 2006</p>
+		<ul>
+			<li>Revised changed heading regex to include &quot;\&amp;&quot; (e.g. AT&amp;T)
+		</ul>
+		<p>Version 1.06: Updated Oct. 5, 2005</p>
+		<ul>
+			<li>Added 682 parsing
+			<ul>
+				<li>New_tag is set to 682 when headings are extracted from that field
+				<li>Global_Replace will need to take these into account during parsing and comparison, since there is a chance that the parsing done by this script will produce unexpected/unreliable results.
+				<li>682 parsing is incomplete and will likely fail on headings with qualifiers.
+			</ul>
+		</ul>
+		<p>Version 1.05: Updated Aug. 25, 2005</p>
+		<ul>
+			<li>Revised parsing to account for some lines previously counted as bad.
+		</ul>
+		<p><a href="inprocess/">parsedeathdateslists.pl.txt</a></p>
+		<p>No version. Very preliminary test code</p>
+		<ul>
+			<li>Help needed in stripping entities other than subfield delimiter.
+			<li>Help needed in selecting best HTML/XML parser for OCLC's closed dates lists.
+			<ul>
+				<li>Requires pure Perl solution (no ability to use compiler or to install extra, non-Perl programs.
+				<li>Cross-platform capable, non-Unicode/capable of stripping non-ASCII characters without worrying about Mac (Classic) vs. Windows character sets.
+			</ul>
+		</ul>
+		<p><b>(Jan. 2, 2006)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.10: Updated Sept. 5-Jan. 2, 2006. Released Jan. 2, 2006.</p>
+		<ul>
+			<li>Revised validate008($field008, $mattype, $biblvl) to use internal subs for material specific byte checking.
+			<ul>
+				<li>Added:
+				<ul>
+					<li>_check_cont_res_bytes($mattype, $biblvl, $bytes),
+					<li>_check_book_bytes($mattype, $biblvl, $bytes),
+					<li>_check_electronic_resources_bytes($mattype, $biblvl, $bytes),
+					<li>_check_cartographic_bytes($mattype, $biblvl, $bytes),
+					<li>_check_music_bytes($mattype, $biblvl, $bytes),
+					<li>_check_visual_material_bytes($mattype, $biblvl, $bytes),
+					<li>_check_mixed_material_bytes,
+					<li>_reword_008(@warnings), and
+					<li>_reword_006(@warnings).
+				</ul>
+				<li>Updated Continuing resources byte 20 from ISSN center to Undefined per MARC 21 update of Oct. 2003.
+			</ul>
+			<li>Updated wording in findfloatinghyphens($record) to report 10 chars on either side of floaters and check_floating_punctuation($record) to report some context if the field in question has more than 80 chars.
+			<li>check_bk008_vs_bibrefandindex($record) updated to check for 'p. ' following bibliographical references when pagination is present.
+			<li>check_5xxendingpunctuation($record) reports question mark or exclamation point followed by period as error.
+			<li>check_5xxendingpunctuation($record) now checks 505.
+			<li>Updated check_nonpunctendingfields($record) to account for initialisms with interspersed periods.
+			<li>Added check_floating_punctuation($record) looking for unwanted spaces before periods, commas, and other punctuation marks.
+			<li>Renamed findfloatinghyphens($record) to fix spelling.
+			<li>Revised check_bk008_vs_300($record) to account for textual materials on CD-ROM.
+			<li>Added abstract to name.
+		</ul>
+		<p><a href="bryanmodules/"><b>MARC::Lint::CodeData.pm</b></a>:</p>
+		<p>(Most current version is available through CVS on SourceForge with MARC::Lint.)</p>
+		<p>Version 1.04: Updated Oct. 13, 2005.</p>
+		<ul>
+			<li>Added new sources codes from Technical Notice of Oct. 12, 2005.
+		</ul>
+		<p>Version 1.03: Updated Aug. 31, 2005.</p>
+		<ul>
+			<li>Added new language codes for Ainu and Southern Altai (August 30, 2005 technical notice)
+		</ul>
+		<p><b>(Aug. 14, 2005)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.09: Updated July 18, 2005. Released July 19, 2005 (Aug. 14, 2005 to CPAN).</p>
+		<p>Module in process:</p>
+		<p><a href="inprocess/"><b>MARC::File::MARCMaker.pm</b></a>: (zipped and uncompressed as /marc-marcmaker/)</p>
+		<p>Version 0.03: Updated Aug. 2, 2005. Released Aug. 14, 2005.</p>
+		<ul>
+			<li>Revised decode() to fix problem with dollar sign conversion from mnemonics to characters.
+		</ul>
+		<p><a href="inprocess/"><b>MARC::Global_Replace.pm</b></a>:</p>
+		<p>Version 0.03--Updated Aug. 3, 2005. Posted Aug. 14, 2005</p>
+		<ul>
+			<li>Added as_hyphenated($sh_field) to break field into a string with dashes separating subfields.
+			<li>Revised subs as needed.
+			<li>First version released (to my site)
+			<li>This version is very preliminary and will not necessarily install using the normal installation process.
+			<li>The test program, global_replace_ident.txt (global_replace_ident.pl) will require modification to work on other systems (it relies on my internal module, MARC::QBI::Misc for file IO).
+		</ul>
+		<p>Script updates:</p>
+		<p><a href="inprocess/">LCSHchangesparserpl104.txt</a></p>
+		<p>Version 1.04: Updated July 28-Aug. 4, 2005</p>
+		<ul>
+			<li>Added thesaurus as 5th element of output lines, telling which thesaurus the line uses.
+			<li>Outputs AC headings as separate group at the end of the compiled sorted file of headings (allhash).
+			<li>Misc. fixes.
+		</ul>
+		<p>
+		<hr>
+		<font size="4">Current planned in progress tasks:</font></p>
+		<p>1. Clean LCSH weekly lists to identify cancelled-&gt;replaced headings. Preliminary code for this is in the <a href="inprocess/">inprocess</a> directory.</p>
+		<p>2. Use the cleaned LCSH weekly list cancel/replace headings to do global SH replace. I am working on a new module, MARC::GlobalReplace, to do this. It is at a very early stage, and has been posted to the <a href="inprocess/">inprocess</a> directory. It includes a script, global_replace_ident.pl to identify changed headings given 'allhash.txt' generated by the LCSH changes parser (v. 1.07+) and a file of MARC records. The script and module have undergone very minimal testing, but seem to do ok at reporting possible changed headings in MARC records.</p>
+		<p>3. Cleanup some of the templatified (full record/cleanup) scripts, adding type/creator information when using MacOS, for example, along with documentation.</p>
+		<p>4. Write additional lint checks, including (these will go into MARC::Errorchecks):</p>
+		<ul>
+			<li>Rewrite validate007 to be more efficient and consistent in error reporting (wording) (validate008 has been updated in version 1.04 of MARC::Errochecks).
+			<li>Match data from 006-008 vs. appropriate fields lower in record.
+			<li>GMD validation and comparison with other fields.
+			<li>Additional 300-field comparisons based on record material type.
+			<li>Validate or compare subfield code in 6xx against approved list, mainly to find miscoded geographical headings (and topicals in geographical subdivisions). (Code available upon request for geographical headings and form subdivisions)
+		</ul>
+		<p>Item 4 is shorter now, as I added a number of check_XXX functions in MARC::Lintadditions.pm and MARC::Errorchecks.pm.</p>
+		<p>5. Work on integrating MARC::Lintadditions functionality into MARC::Lint. This has begun, with check_041, check_043, and check_245. The main hold-up is getting tests written for each check_xxx method.</p>
+		<p>6. Write tests for MARC::Errorchecks, MARC::Lintadditions, and MARC::BBMARC.</p>
+		<p>7. Work on creating MARC::File::MARCMaker. This is a rewrite of the MARCMaker-related code in MARC.pm, to allow MARC::Record to work with LC's MARCMaker format files (<a href="http://www.loc.gov/marc/makrbrkr.html">http://www.loc.gov/marc/makrbrkr.html</a>). This has been uploaded to SourceForge CVS (marcpm, alongside MARC::Record, MARC::Lint, etc.)</p>
+		<p>8. Move file handling and other subroutines from internal MARC::QBI::Misc module to public MARC::BBMARC module. The functions in MARC::QBI::Misc are mainly for non-command line users, to put up prompts and reduce unwanted overwriting of files.</p>
+		<p>9. Work on creating MARC::Lint::Lint_Authority.pm. This will be a module essentially copying MARC::Lint, but with a data section and methods for validating MARC format for Authority data rather than Bibliographic. An initial version of this module appears in the inprocess directory.</p>
+		<p><b>With the added checks, the lint checker runs a bit slower, so I welcome any suggestions for improved efficiency.</b></p>
+		<p><b>I welcome any help with any of the above, especially number 7.</b></p>
+		<p>
+		<hr>
+		</p>
+		<p><b>(July 19, 2005)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.09: Updated July 18, 2005. Released July 19, 2005.</p>
+		<ul>
+			<li>Added check_010.t (and check_010.t.pl) tests for check_010($record).
+			<li>check_010($record) revisions.
+			<ul>
+				<li>Turned off validation of 8-digit LCCN years. Code commented-out.
+				<li>Modified parsing of numbers to check spacing for 010a with valid non-digits after valid numbers.
+				<li>Validation of 10-digit LCCN years is based on current year.
+			</ul>
+			<li>Fixed bug of uninitialized values for matchpubdates($record) 050 and 260 dates.
+			<li>Corrected comparison for year entered &lt; 1980.
+			<li>Removed AutoLoader (which was a remnant of the initial module creation process)
+		</ul>
+		<p><b>(July 16, 2005)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Lintadditions.pm</b></a>:</p>
+		<p>Version 1.09: Updated Mar. 31-Apr., 2005. Released July 16, 2005.</p>
+		<ul>
+			<li>check_260() updated to report error if subfield 'a' and 'b' are not present.
+			<li>More '==' etc. changed to 'eq' etc. for indicators.
+			<li>check_082() updated to set $dewey to empty string if no 082$a is present before checking for 3 digits.
+		</ul>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.08: Updated Feb. 15-July 11, 2005. Released July 16, 2005.</p>
+		<ul>
+			<li>Added 008errorchecks.t (and 008errorchecks.t.txt) tests for 008 validation
+			<li>Added check of current year, month, day vs. 008 creation date, reporting error if creation date appears to be later than local time. Assumes 008 dates of 00mmdd to 70mmdd represent post-2000 dates.
+			<ul>
+				<li>This is a change from previous range, which gave dates as 00-06 as 200x, 80-99 as 19xx, and 07-79 as invalid.
+			</ul>
+			<li>Added _get_current_date() internal sub to assist with check of creation date vs. current date.
+			<li>findemptysubfields($record) also reports error if period(s) and/or space(s) are the only data in a subfield.
+			<li>Revised wording of error messages for validate008($field008, $mattype, $biblvl)
+			<li>Revised parse008date($field008string) error message wording and bug fix.
+			<li>Bug fix in video007vs300vs538($record) for gathering multiple 538 fields.
+			<li>added check in check_5xxendingpunctuation($record) for space-semicolon-space-period at the end of 5xx fields.
+			<li>added field count check for more than 50 fields to check_fieldlength($record)
+			<li>added 'webliography' as acceptable 'bibliographical references' term in check_bk008_vs_bibrefandindex($record), even though it is discouraged. Consider adding an error message indicating that the term should be 'bibliographical references'?
+			<li>Code indenting changed from tabs to 4 spaces per tab.
+			<li>Misc. bug fixes including changing '==' to 'eq' for tag numbers, bytes in 008, and indicators.
+		</ul>
+		<p><a href="bryanmodules/"><b>MARC::Lint::CodeData.pm</b></a>:</p>
+		<p>Version 1.02: Updated June 21-July 12, 2005. Released (to CPAN) with new version of MARC::Errorchecks. Also posted to CVS on SourceForge with MARC::Lint.</p>
+		<ul>
+			<li>Added GAC and Country code changes for Australia (July 12, 2005 update)
+			<li>Added 6xx subfield 2 source code data for June 17, 2005 update.
+			<li>Updated valid Language codes to June 2, 2005 changes.
+		</ul>
+		<p>Module in process:</p>
+		<p><a href="inprocess/"><b>MARC::File::MARCMaker.pm</b></a>: (zipped and uncompressed as /marc-marcmaker/)</p>
+		<p>Version 0.02: Updated July 12-13, 2005. Released July 16, 2005.</p>
+		<ul>
+			<li>Preliminary version of encode() for fields and records.
+			<li>Appears to work when no special chars are present (including dollar signs).
+			<li>See TODO.txt and readme0.02.txt for list of items still needing to be done and other notes.
+			<li>Note: This is a pre-alpha release, and little testing has been done on the results of decode() or encode().
+		</ul>
+		<p><b>Added and changed scripts</b>:</p>
+		<p>Updated LCSH Changes Parser script, <a href="inprocess/LCSHchangesparserpl103.txt">LCSHchangesparserpl103.txt</a>:</p>
+		<ul>
+			<li>Now creates files with tab-separated lines: old_tag \t old_hdg \t new_tag \t new_hdg.
+			<li>Better parsing of weekly files.
+		</ul>
+		<p><b>(Mar. 7, 2005)</b></p>
+		<p>New Module in process:</p>
+		<p><a href="inprocess/"><b>MARC::File::MARCMaker.pm</b></a>: (zipped and uncompressed as /marc-marcmaker/)</p>
+		<p>Version 0.01: Initial version, Nov. 21, 2004-Mar. 7, 2005. Released Mar. 7, 2005.</p>
+		<ul>
+			<li>Basic version, translates .mrk format file into MARC::Record objects.
+			<li>See TODO.txt for list of items still needing to be done.
+			<li>Note: This is a pre-alpha release, and little testing has been done on the results of decode().
+		</ul>
+		<p><b>(Feb. 27, 2005)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Lintadditions.pm</b></a>:</p>
+		<p>Version 1.08: Updated Feb. 21-27, 2005. Released Feb. 27, 2005.</p>
+		<ul>
+			<li>Revision of check_020() in preparation for move to MARC::Lint.
+			<li>Moved check_020() to MARC::Lint (remains here during testing).
+			<li>validate007() revised to deal with possibility of subfields existing in pre-010 fields, or other non-legitimate 1st characters existing.
+		</ul>
+		<p><b>(Feb. 13, 2005)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.07: Updated Dec. 11-Feb. 2005. Released Feb. 13, 2005.</p>
+		<ul>
+			<li>check_double_periods() skips field 856, where multiple punctuation is possible for URIs.
+			<li>added code in check_internal_spaces() to account for spaces between angle brackets in open dates in field 260c.
+			<li>Updated various subs to verify that 008 exists (and quietly return if not. check_008 will report the error).
+			<li>Changed #! line, removed -w, replaced with use warnings.
+			<li>Added error message to check_bk008_vs_bibrefandindex($record) if 008 book index byte is not 0 or 1. This will result in duplicate errors if check_008 is also called on the record.
+		</ul>
+		<p><a href="bryanmodules/"><b>Lintadditions.pm</b></a>:</p>
+		<p>Version 1.07: Updated Jan. 2-Feb. 1, 2005. Released Feb. 13, 2005.</p>
+		<ul>
+			<li>Updated check_260 to account for angle brackets for open dates in subfield c.
+			<li>Updated check_020 to handle 13-digit ISBNs. This relies upon the new internal _isbn13_check_digit($ean), temporary until Business::ISBN handles 13-digit ISBNs directly.
+			<li>Added basic check to check_600 (and by call, other 6xx) for subfield 2 codes. Similar code duplicated in check_655, due to difference in code lists for each field. Still need to deal with obsolete code error reporting.
+			<li>Moved check_245 to MARC::Lint (retained here as a POD section during testing).
+			<li>Moved check_041 and check_043 to MARC::Lint (retained here as a POD section during testing).
+			<li>Added warning to check_007 for obsolete byte 2.
+			<li>Removed pod info related to changes needed to MARC::Lint (which has been updated).
+			<li>Misc. cleanup.
+			<li>Revised check_1xx, check_6xx, check_7xx, and check_8xx to use check_100, etc. (to avoid code duplication). (based on code from Ian Hamilton)
+		</ul>
+		<p><a href="bryanmodules/"><b>MARC::Lint::CodeData.pm</b></a>:</p>
+		<p>Version 1.01: Updated Jan. 5-Feb. 10, 2005. Released (to CPAN) Feb. 13, 2005 (with new version of MARC::Errorchecks).</p>
+		<ul>
+			<li>Added code list data for 600-651 subfield 2 and for 655 subfield 2 sources.
+			<li>Updated codes based on changes made Jan. 19 (languages), Feb. 2 (sources), Feb. 9 (sources).
+		</ul>
+		<p><b>Added and changed scripts</b>:</p>
+		<p>See the <a href="manifest.htm">manifest.htm</a> page for more information about these. All are in <a href="fullrecscripts/">fullrecscripts</a>.</p>
+		<ul>
+			<li>extractisbn.txt
+			<li>fieldindexer.txt
+			<li>lintallchecks.txt
+			<li>linttest.txt
+			<li>EAN_ISBNconverter.txt
+			<li>hasnosears.txt
+			<li>Errorchecks.t.txt
+		</ul>
+		<p><b>(Dec. 5, 2004)</b></p>
+		<p>New module:</p>
+		<p><a href="bryanmodules/"><b>MARC::Lint::CodeData.pm</b></a>:</p>
+		<p>Version 1.00 (original version): First release, Dec. 5, 2004. Uploaded to SourceForge CVS, Jan. 3, 2005.</p>
+		<ul>
+			<li>Included in MARC::Errorchecks distribution on CPAN.
+			<li>Used by MARC::Lintadditions.
+		</ul>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.04: Updated Nov. 4-Dec. 4, 2004. Released Dec. 5, 2004.</p>
+		<ul>
+			<li>Updated validate008() to use MARC::Lint::CodeData.
+			<li>Removed DATA section, since this is now in MARC::Lint::CodeData.
+			<li>Updated check_008() to use the new validate008().
+			<li>Revised bib. refs. check to require 'reference' to be followed by optional 's', optional period, and word boundary (to catch things like 'referenced'.
+		</ul>
+		<p><a href="bryanmodules/"><b>Lintadditions.pm</b></a>:</p>
+		<p>Version 1.06: Updated Nov. 21-24, 2004. Released Dec. 5, 2004.</p>
+		<ul>
+			<li>Removed readcodedata(), replaced with separate data pack, MARC::Lint::CodeData.
+			<li>Updated check_040, check_041 and check_043 to use MARC::Lint::CodeData.
+			<li>Deleted the DATA section based on the above changes.
+			<li>Misc. bug fixes.
+			<li>Reports 13 digit ISBNs as errors pending updating of Business::ISBN to account for 13 digit ISBNs.
+		</ul>
+		<p><a href="bryanmodules/"><b>BBMARC.pm</b></a>:</p>
+		<p>Version 1.08: Updated Oct 31, 2004. Released Dec. 5, 2004.</p>
+		<ul>
+			<li>New method, as_array, an add-on to MARC::Field which breaks down a MARC::Field object into a flat array, returns a ref to that array.
+			<li>Misc. cleanup.
+		</ul>
+		<p><b>Added and changed scripts</b>:</p>
+		<p>See the <a href="manifest.htm">manifest.htm</a> page for more information about these. All but the last are in <a href="fullrecscripts/">fullrecscripts</a>. The last is in <a href="inprocess/">inprocess</a>.</p>
+		<ul>
+			<li>Errorchecks.t.txt
+			<li>extractbycontrolno.txt
+			<li>extractbyisbn.txt
+			<li>extractbystockorisbn.txt
+			<li>extractspecsubfield.txt
+			<li>fieldextractionwithregex.txt
+			<li>countrycodelistclean.txt
+			<li>gaccleanupscript.txt
+			<li>languagecodelistclean.txt
+			<li>deleteSHandDDC.txt
+			<li>EAN_ISBNconverter.txt
+			<li>printrecordasformatted.txt
+			<li>LCSHchangesparserpl102.txt
+		</ul>
+		<p><b>(Oct. 17, 2004)</b></p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.03: Updated Aug. 30-Oct. 16, 2004. Released Oct. 17. First CPAN version.</p>
+		<ul>
+			<li>Moved subs to MARC::QBIerrorchecks
+			<ul>
+				<li>check_003($record)
+				<li>check_CIP_for_stockno($record)
+				<li>check_082count($record)
+			</ul>
+			<li>Fixed bug in check_5xxendingpunctuation for first 10 characters.
+			<li>Moved validate008() and parse008date() from MARC::BBMARC (to make MARC::Errorchecks more self-contained).
+			<li>Moved readcodedata() from BBMARC (used by validate008)
+			<li>Moved DATA from MARC::BBMARC for use in readcodedata()
+			<li>Remove dependency on MARC::BBMARC
+			<li>Added duplicate comma check in check_double_periods($record)
+			<li>Misc. bug fixes
+			<li>Planned (future versions):
+			<ul>
+				<li>Account for undetermined dates in matchpubdates($record).
+				<li>Cleanup of validate008
+				<ul>
+					<li>Standardization of error reporting
+					<li>Material specific byte checking (bytes 18-34) abstracted to allow 006 validation.
+				</ul>
+			</ul>
+		</ul>
+		<p><a href="bryanmodules/"><b>Lintadditions.pm</b></a>:</p>
+		<p>Version 1.05: Updated Aug. 30-Oct. 16, 2004. Released Oct. 17, 2004.</p>
+		<ul>
+			<li>Moved institution-specific code from check_040 to MARC::QBIerrorchecks.
+			<ul>
+				<li>check_040 still present to check $b language (currently commented-out)
+			</ul>
+			<li>Moved check_037 to MARC::QBIerrorchecks.
+			<li>Updated check_082 to ensure decimal after 3rd digit in numbers longer than 3 digits.
+			<li>Moved validate007(\@bytesfrom007) from MARC::BBMARC (to make MARC::Lintadditions more self-contained).
+			<li>Fixed problem in 6xx check for subfield _2 (changed '==' to 'eq').
+			<li>Updated validate007(\@bytesfrom007) (bug fixes, misc. revisions)
+			<li>Updated check_050 to check for unfinished cutters (single capital letter followed by space or nothing)
+		</ul>
+		<p><a href="bryanmodules/"><b>BBMARC.pm</b></a>:</p>
+		<p>Version 1.07: Updated Aug. 30-Oct. 16, 2004. Released Oct. 16, 2004.</p>
+		<ul>
+			<li>Moved subroutine getcontrolstocknos() to MARC::QBIerrorchecks
+			<li>Moved validate007() to Lintadditions.pm
+			<li>Moved validate008() and related subs to Errorchecks.pm
+			<ul>
+				<li>(Left readcodedata() in BBMARC, but it is now duplicated in Errorchecks.pm, along with a modified version in Lintadditions.pm).
+				<li>Also left parse008date, which may have uses outside of error checking.
+			</ul>
+			<li>Updated read_controlnos([$filename]) with minor changes.
+			<ul>
+				<li>This subroutine could be rewritten in a more general way, since it simply reads all lines from a file into an array and returns that array.
+			</ul>
+		</ul>
+		<p><b>Added and changed scripts</b>:</p>
+		<ul>
+			<li>003cleanupscript.pl--Included in MARC::Errorchecks distribution, matches 001 and 003.
+			<li>007cleanupscript.pl--Included in MARC::Errorchecks distribution, cleans bytes in 007 and reports errors.
+			<li>010cleanupscript.pl--Included in MARC::Errorchecks distribution, cleans spacing in 010 subfield 'a'.
+			<li>cleantrailingspaces.pl--Included in MARC::Errorchecks distribution, removes spaces at the end of fields &gt; 010, ignores 016.
+			<li>countrycodelistclean.pl--Included in MARC::Errorchecks distribution, given the <a href="http://www.loc.gov/marc/countries/cou_ascii.html">ASCII-format MARC code list for Countries</a>, creates list of code\tlanguage pairs, followed by tab-separated list of current, then obsolete, codes.
+			<li>gaccleanupscript.pl--Included in MARC::Errorchecks distribution, given the <a href="http://www.loc.gov/marc/geoareas/gacascii.html">ASCII-format MARC code list for Geographic Area Codes</a>, creates list of code\tlanguage pairs, followed by tab-separated list of current, then obsolete, codes.
+			<li>languagecodelistclean.pl--Included in MARC::Errorchecks distribution, given the <a href="http://www.loc.gov/marc/languages/langascii.html">ASCII-format MARC code list for Languages</a>, creates list of code\tlanguage pairs, followed by tab-separated list of current, then obsolete, codes.
+			<li>lintallchecks.pl--Included in MARC::Errorchecks distribution.
+		</ul>
+		<p>Reorganized Full Record Script directory as seen below. Note: Many of the scripts have not been reviewed lately, and so may not work with the current versions of my modules. This is particularly true of the items in Tests for Errorchecks and Tests for Lintadditions.</p>
+		<p>Cleanup full recs</p>
+		<ul>
+			<li>003cleanupscript.txt
+			<li>007cleanupscript.txt
+			<li>010cleanupscript.txt
+			<li>cleantrailingspaces.txt
+		</ul>
+		<p>Code list cleanup</p>
+		<ul>
+			<li>countrycodelistclean.txt
+			<li>gaccleanupscript.txt
+			<li>languagecodelistclean.txt
+		</ul>
+		<p>Counting</p>
+		<ul>
+			<li>comparemerge.txt
+			<li>countrecords.txt
+			<li>countrecsbytype.txt
+			<li>errreptcount.txt
+			<li>fieldsubfieldcounts.txt
+		</ul>
+		<p>Extraction</p>
+		<ul>
+			<li>extractbycontrolno.txt
+			<li>extractbycontrolnoignrspace.txt
+			<li>extracterrorsfrommodules.txt
+			<li>extractnonbookby008date.txt
+			<li>extractpcip.txt
+			<li>extractspecsubfield.txt
+			<li>fieldextraction.txt
+			<li>fieldextraction3.txt
+			<li>fieldextractioncleanspaces.txt
+			<li>fieldextractionnocontrols.txt
+		</ul>
+		<p>findmultiplefields.txt<br>
+		hasbeenupdated.txt</p>
+		<p>Linting</p>
+		<ul>
+			<li>lintallchecks.txt
+			<li>lintcheck2.txt
+			<li>linttest.txt
+			<li>lintwithadditions.txt
+			<li>lintwithadditionsselective.txt
+		</ul>
+		<p>mermarcfiles.txt<br>
+		outputchangestogether.txt<br>
+		printrecordasformatted.txt<br>
+		rawanddecodedscan.txt<br>
+		splitmarcfile.pl.txt</p>
+		<p>Tests for Errorchecks</p>
+		<ul>
+			<li>008checker.txt
+			<li>008illvs300.txt
+			<li>008matchvsotherfields.txt
+			<li>checkcipforstockno.txt
+			<li>Errorchecks.t.txt
+			<li>findemptysubfields.txt
+			<li>findlongrecords.txt
+			<li>findmultiperiodsafter010.txt
+			<li>findmultiplefields.txt
+			<li>findmultispacesafter010.txt
+			<li>findunderscoredollarinfield.txt
+			<li>ldrvalidatescript.txt
+			<li>pubdatecomparisons.txt
+			<li>testgetdate.txt
+			<li>testnewerrorchecks.txt
+			<li>viddvdvsvhs.txt
+		</ul>
+		<p>Tests for Lintadditions</p>
+		<ul>
+			<li>check022script.txt
+			<li>isbnvalidatescript.txt
+			<li>lintwithadditionsselective.txt
+			<li>validate007.t.txt
+		</ul>
+		<p><b>(Aug. 22, 2004)</b>:</p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.02: Updated Aug. 11-22, 2004. Released Aug. 22, 2004.</p>
+		<ul>
+			<li>Implemented VERSION (uncommented)
+			<li>Added check for presence of 040 (check_040present($record)).
+			<li>Added check for presence of 2 082s in full-level, 1 082 in CIP-level records (check_082count($record)).
+			<li>Added temporary (test) check for trailing punctuation in 240, 586, 440, 490, 246 (check_nonpunctendingfields($record))
+			<ul>
+				<li>which should not end in punctuation except when the data ends in such.
+			</ul>
+			<li>Added check_fieldlength($record) to report fields longer than 1870 bytes.
+			<ul>
+				<li>This should be rewritten to use the length in the directory of the raw MARC.
+			</ul>
+			<li>Fixed workaround in check_bk008_vs_bibrefandindex($record) (Thanks again to Rich Ackerman).
+		</ul>
+		<p><a href="bryanmodules/"><b>Lintadditions.pm</b></a>:</p>
+		<p>Version 1.04: Updated Aug. 10-22, 2004. Released Aug.22, 2004.</p>
+		<ul>
+			<li>Implemented VERSION (uncommented)
+			<li>Revised check_050 exception (Thank you to all who posted about this).
+			<li>Moved VERSION HISTORY to end of module.
+			<li>Added preliminary checking of 245 2nd indicator in check_245 (Thanks to Ian Hamilton).
+		</ul>
+		<p><a href="bryanmodules/"><b>BBMARC.pm</b></a>:</p>
+		<p>Version 1.06: Updated Aug. 10-22, 2004. Released Aug. 15, 2004.</p>
+		<ul>
+			<li>Implemented VERSION (uncommented)
+			<li>Added subroutine getcontrolstocknos()
+			<li>General readability cleanup (added tabs)
+			<li>Bug fix in validate008 for date2 check
+		</ul>
+		<p>Planned (next release):</p>
+		<ul>
+			<li>Cleanup of validate008 (and validate007)
+			<ul>
+				<li>Standardization of error reporting
+				<li>Material specific byte checking (bytes 18-34) abstracted to allow 006 validation.
+			</ul>
+		</ul>
+		<p><b>Added and changed scripts</b>:</p>
+		<p>Updated LCSH Changes Parser script, <a href="inprocess/LCSHchangesparser2.txt">LCSHchangesparser2.txt</a>:</p>
+		<ul>
+			<li>Adds 500 to tag number if it is 1xx, so that it becomes 600-655, in preparation for use in global replacement.
+			<li>Misc. fixes.
+		</ul>
+		<p><b>(Aug. 15, 2004)</b>:</p>
+		<p>Module updates as described above (prereleased).</p>
+		<p><b>Added and changed scripts</b>:</p>
+		<p>Updated LCSH Changes Parser script, <a href="inprocess/">LCSHchangesparserpl2.txt</a>:</p>
+		<ul>
+			<li>Now prints 682 and 260 if cancelled heading is followed by one of these instead of a replacement 1xx.
+			<li>Prints out to an all.txt file (containing all changed 1xx headings) and to a bad.txt file (containing any cancelled headings not followed by a 1xx or headings with characters not matching the regular expression for finding an old heading.
+		</ul>
+		<p><b>(Aug. 8, 2004)</b>:</p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.01: Updated July 20-Aug. 7, 2004. Released Aug. 8, 2004.</p>
+		<ul>
+			<li>Temporary (or not) workaround for check_bk008_vs_bibrefandindex($record) and bibliographies.
+			<li>Removed variables from some error messages and cleanup of messages.
+			<li>Code readability cleanup.
+			<li>Added subroutines
+			<ul>
+				<li>check_240ind1vs1xx($record) -- Reports errors based on whether 240 and 1xx are both present and first indicator is 1 or 0.
+				<li>check_041vs008lang($record) -- Compares first code in subfield 'a' of 041 vs. 008 bytes 35-37.
+				<li>check_5xxendingpunctuation($record) -- Looks for final punctuation in several of the 5xx fields.
+				<li>findfloatinghypens($record) -- Looks for space-hyphen-space in each field (in a list of given fields)
+				<li>video007vs300vs538($record) -- In video records, compares 007 values vs. 300 and 538 fields. Limited to VHS, DVD, and Video CD.
+				<li>ldrvalidate($record) -- Checks for valid bytes in the user-changable leader bytes.
+				<li>geogsubjvs043($record) -- Reports missing 043 if 651 or 6xx$z is present.
+				<ul>
+					<li>has list of exceptions (e.g. English-speaking countries)
+				</ul>
+				<li>findemptysubfields($record) -- Looks for empty subfields (e.g. $x$xPsychology.)
+			</ul>
+			<li>Changed subroutines:
+			<ul>
+				<li>check_bk008_vs_300:
+			</ul>
+			<ul>
+				<ul>
+					<li>added cross-checking for codes a, b, c, g (ill., map(s), port(s)., music)
+					<li>added checking for 'p. ' or 'v. ' or 'leaves ' in subfield 'a'
+					<li>added checking for 'cm.', 'mm.', 'in.' in subfield 'c'
+					<li>revised check for 'm', phono. (which QBI doesn't currently use)
+				</ul>
+			</ul>
+			<ul>
+				<li>Added check in check_bk008_vs_bibrefandindex($record) for 'Includes index.' (or indexes) in 504
+			</ul>
+			<ul>
+				<ul>
+					<li>This has a workaround I would like to figure out how to fix.
+				</ul>
+			</ul>
+		</ul>
+		<p><a href="bryanmodules/"><b>Lintadditions.pm</b></a>:</p>
+		<p>version 1.03: Updated July 20-Aug. 7, 2004. Released Aug. 8, 2004.</p>
+		<ul>
+			<li>Added check_1xx and check_7xx sets -- Checks for proper ending punctuation (100, 110, 111, 130, 700, 710, 711, 730, 740).
+			<li>Added checks for non-filing indicator in 130, 630, 730, 740, and 830.
+			<li>Added indicator check for 700--ind1 == 3 -&gt; error.
+			<li>Added validation of 041 against MARC Code List for Languages.
+			<li>Added check_028 and check_037 -- IOrQBI specific for 037, both verify presence of subfield 'b'.
+			<li>Removed some variables from warning messages.
+			<li>Added check_050 -- Reports double periods before Cutters (with exception--date after first Cutter in subfield 'a' followed by subfield 'b' item Cutter).
+			<li>Added check_040 (IOrQBI specific).
+			<li>Added check_440 and check_490.
+			<li>Added check_246.
+			<li>Changed check_245 ending punctuation errors based on MARC21 rule change vs. LCRI 1.0C from Nov. 2003.
+			<li>Added check for square brackets in 245 $h.
+			<li>Added check for 260 ending punctuation.
+		</ul>
+		<p><b>Added and changed scripts</b>:</p>
+		<p>Most of these are test scripts created while writing the subroutines listed above.<br>
+		The subroutines in the modules may have code not in the scripts, so it is best to use the module rather than the script for those checks (the last 3 full record scripts).</p>
+		<ul>
+			<li>Full record:
+			<ul>
+				<li>fieldsubfieldcounts.txt -- Field and subfield count--will report totals for each tag and subfield.
+				<ul>
+					<li>First version: Field tag counts only.
+				</ul>
+				<li>testnewerrorchecks.txt -- Test script to call new subroutines in Errorchecks.pm (MARC::Errorchecks).
+				<li>ldrvalidatescript.txt -- In Errorchecks.pm
+				<li>viddvdvsvhs.txt -- In Errorchecks.pm.
+				<li>findemptysubfields.txt -- Looks for empty subfields. Skips 037 in CIP-level records. In Errorchecks.pm.
+			</ul>
+			<li>Cleanup:
+			<ul>
+				<li>find050doubleperiod.txt -- Test regex for finding pattern in 050$a. Preliminary code for MARC::Lintadditions::check_050()
+				<li>removetitlefromlintrpt.txt -- Removes titles from lintallchecks' output file.
+				<li>findmissing300apunctuation.txt -- Looks for missing period after p or v in 300a extract file. Initial step for MARC::Errorchecks::check_bk008_vs_300($record) code.
+			</ul>
+		</ul>
+		<p><b>(July 17, 2004)</b>:</p>
+		<p>Module updates:</p>
+		<p><a href="bryanmodules/"><b>Errorchecks.pm</b></a>:</p>
+		<p>Version 1.00 (update to 0.95): First release, July 17, 2004.</p>
+		<ul>
+			<li>Fixed bugs causing check_003 and check_010 subroutines to fail (Thanks to Rich Ackerman)
+			<li>Added to documentation
+			<li>Misc. cleanup
+			<li>Added subroutines (MARC::Errorchecks::*):
+			<ul>
+				<li>check_end_punct_300($record)
+				<li>check_bk008_vs_300($record)
+				<ul>
+					<li>parse008vs300b
+				</ul>
+				<li>check_490vs8xx($record)
+				<li>check_245ind1vs1xx($record)
+				<li>matchpubdates($record)
+				<li>check_bk008_vs_bibref($record)
+				<li>check_bk008_vs_bibrefandindex($record)
+			</ul>
+			<li>Added skip of 787 fields to check_internal_spaces($record)
+		</ul>
+		<p><a href="bryanmodules/"><b>Lintadditions.pm</b></a><font size="4">:</font></p>
+		<p>version 1.02: Updated July 2-16, 2004. Released July 17, 2004.</p>
+		<ul>
+			<li>Cleaned up some of the documentation
+			<li>Added global variable in hopes of improving efficiency of language/GAC/country code validation
+			<li>Modified check_043 and/or MARC::Lintadditions::readcodedata() to use the new global variable.
+			<li>Added check_6xx subroutines (600, 610, 611, 650, 651, 655)
+			<li>Added check for space between initials in 245 $c in check_245
+			<li>Added check_042 (valid values: lcac, lccopycat, pcc, nsdp)
+			<li>Added check_020 (relies upon Business::ISBN module)
+			<li>Added check_022 (relies upon Business::ISSN module)
+		</ul>
+		<p><a href="bryanmodules/"><b>BBMARC.pm</b></a>:</p>
+		<p>Version 1.05: Updated July 3, 2004, released July 17, 2004</p>
+		<ul>
+			<li>Cleaned some documentation
+			<li>Added global variable in hopes of improving efficiency of language/GAC/country code validation
+			<li>Modified MARC::BBMARC::validate008 and/or MARC::BBMARC::readcodedata() to use the new global variable.
+			<li>Moved MARC::BBMARC::readcodedata() and MARC::BBMARC::parse008date above MARC::BBMARC::validate008
+		</ul>
+		<p><b>Added and changed scripts:</b></p>
+		<ul>
+			<li>Updated <a href="fullrecscripts/lintallchecks.txt">lintallchecks.pl</a> Calls MARC::Lint, MARC::Lintadditions, and MARC::Errorchecks and outputs the controlno, title, and errors found.
+			<li><a href="fullrecscripts/extractspecsubfield.txt">extractspecsubfield.pl</a>: Based on fieldextraction.pl, pulls out specified subfields from a given field (or set of fields, such as 6xx)
+			<li><a href="fullrecscripts/isbnvalidatescript.txt">isbnvalidatescript.pl</a>: Initial version of subroutine being added to Lintadditions, check_020
+			<li><a href="fullrecscripts/testnewerrorchecks.txt">testnewerrorchecks.</a>pl: Unmaintained/initial script for testing new subroutines in Errorchecks.pm
+			<li><a href="fullrecscripts/extractpcip.txt">extractpcip.pl</a> Outputs records coded as CIP-level (8).
+			<li><a href="fullrecscripts/003cleanupscript.txt">003cleanupscript.pl</a>: Similar process to check_003 in Lintadditions.pm, but does the cleaning.
+			<li><a href="fullrecscripts/cleantrailingspaces.txt">cleantrailingspaces.pl</a>: Removes spaces from the end of lines
+			<li><a href="fullrecscripts/fieldextractioncleanspaces.txt">fieldextractioncleanspaces.pl</a>: Field extraction code modified to clean trailing spaces and certain punctuation from the end of the field
+			<li><a href="fullrecscripts/findmultiperiodsafter010.txt">findmultiperiodsafter010.pl</a>: Looks for more than one period within subfields after 010, ignoring ellipses. This has been integrated into MARC::Errorchecks
+			<li><a href="cleanupscripts/listcomparison.txt">listcomparison.txt</a>: Compares 2 lists (uses List::Compare from CPAN). Useful with the fieldextraction.pls
+			<li><a href="cleanupscripts/cleansubfieldextracts.txt">cleansubfieldextracts.txt</a>: Similar to the other fieldextraction cleanups, removes counts from subfield extraction files
+		</ul>
+		<p><b>(June 22, 2004)</b>:</p>
+		<p>New module:</p>
+		<p><a href="bryanmodules/">Errorchecks.pm</a> (MARC::Errorchecks): Collection of error checking subroutines similar to MARC::Lint and MARC::Lintadditions. This is currently version 0.95 due to problems with the subroutine calls to check_003 and check_010. Warnings indicate use of uninitialized Array references.</p>
+		<p>Associated script for using MARC::Errorchecks: <a href="fullrecscripts/lintallchecks.txt">lintallchecks.txt</a>. This can replace most of the error checking scripts, along with the checking portion of the cleanup full record scripts. It should also work without changes as Errorchecks.pm is updated with new subroutines.</p>
+		<p><b>(June 20, 2004)</b>:</p>
+		<p>Two new scripts:</p>
+		<p><a href="fullrecscripts/findmultispacesafter010.txt">findmultispacesafter010.txt</a>: (looks for multiple spaces in a field, for fields after 010. Could be improved by accounting for other fields where multiple spaces would be acceptable (such as 035).</p>
+		<p><a href="fullrecscripts/010cleanupscript.txt">010cleanupscript.txt</a>: For 010 fields with only an 8 or 10 digit LCCN in subfield 'a', makes sure proper spacing precedes and follows the number and replaces that subfield in the record. Reports any problems with cleaning the subfield.</p>
+		<p>Changes to my main modules:</p>
+		<p>Lintadditions.pm:</p>
+		<p>version 1.01: Updated June 17, 2004. Released June 20, 2004.</p>
+		<ul>
+			<li>Added validation of 043 against GAC list.
+			<li>Added check_082.
+			<li>Added checks for $b, $h, $n, and $p in 245.
+			<li>Other changes/fixes.
+		</ul>
+		<p>BBMARC.pm:</p>
+		<p>Version 1.04: Updated June 16, 2004, released June 20, 2004</p>
+		<ul>
+			<li>Updated MARC::BBMARC::as_formatted2() to work with MARC::Record 1.38 (is_control_field() instead of is_control_tag()
+			<li>Fixed bug in MARC::BBMARC::validate008 for visual materials running time (hypen was not escaped, so it was being interpreted as a range indicator).
+			<li>Added MARC::BBMARC::parse008date($) to allow user to enter yymmdd and get yyyy\tmm\tdd\t$error string back (for other uses).
+			<li>Added DATA containing codes from the MARC lists for Countries, Geographic Areas, and Languages, to 2003. Each code set is separated by tabs, and Obsolete codes are given following each set of valid codes, in the same format.
+			<li>Added MARC::BBMARC::readcodedata() subroutine for reading in the data and returning the data in an array for use by validation code, such as in MARC::BBMARC::validate008()
+			<li>Modified MARC::BBMARC::validate008 subroutine to use the DATA to validate language and country codes.
+		</ul>
+		<p>Version 1.03: Updated June 10, not released.</p>
+		<ul>
+			<li>Contained many of the changes in 1.04, but 1.04 contains the update to MARC::BBMARC::validate008, so I wanted a new version.
+		</ul>
+		<p><b>(May 31, 2004)</b>:</p>
+		<p>Reorganized site arrangement. I removed separate directories for Mac, Win, and Unix, consolidating the files into the following directories:</p>
+		<p><a href="cleanupscripts/">cleanupscripts</a><br>
+		<a href="fullrecscripts/">fullrecscripts</a><br>
+		<a href="inprocess/">inprocess</a><br>
+		<a href="prevversions/">prevversions</a><br>
+		<a href="bryanmodules/">bryanmodules</a></p>
+		<p>Each directory's contents are described in <a href="manifest.htm">manifest.htm</a></p>
+		<p>The new <a href="inprocess/">inprocess</a> directory contains alpha-or-so stage code, or code I may be having trouble with.</p>
+		<p>Currently this contains an LCSH Weekly Lists parser, which condenses a folder/directory of files into a file of tag-old-new headings, separated by tabs. It also compiles a file of all changed headings in the files in the input directory.</p>
+		<p>Updated MARC::BBMARC:</p>
+		<ul>
+			<li>Cleaned up some of the documentation.
+			<li>Added new function, updated_record_hash(), not yet fully tested, which is similar to updated_record_array(), but stores raw USMARC record indexed (keyed) by control number. This has not been fully tested, and will likely eat massive amounts of memory, especially for large files of records.
+		</ul>
+		<p>Added new module, MARC::<a href="bryanmodules/MARC-Lintadditions-1.00/Lintadditions.pm.txt">Lintadditions.pm</a>. This is an extension to MARC::Lint.pm, with added check_XXX functions (see the module for details).</p>
+		<p>Added script to go with Lintadditions.pm, lintwithadditions.pl, based on Example V3 of the MARC::Doc::Tutorial.</p>
+		<p>Added cleantrailingspaces.pl, which removes the space from the end of each field &gt; 010. I have not yet dealt with the 010 trailing spaces cleanup.</p>
+		<p>Updated fieldextraction.pl. This should fix the problem created when I updated MARC::BBMARC::getthreedigits() to allow periods (so 6.. will retrieve all 6xx fields).</p>
+		<p><b>(May 1, 2004)</b>:</p>
+		<p>Updated BBMARC with a new function, validate008, along with other changes, as listed in BBMARC.pm, including version number (not fully implemented).</p>
+		<p>Moved BBMARC to a separate directory, MARC-BBMARC-[version number], which also includes the two main subroutines as separate files (validate007 and validate008).</p>
+		<p>Added 008checker.pl to go along with validate008.</p>
+		<p>
+		<hr>
+		</p>
+		<p><b>About the author:</b></p>
+		<p>I am a cataloger/librarian with very limited programming experience. I began teaching myself Perl, using Coriolis' Perl Black Book, along with online documentation and books, around November, 2003. The extent of my knowledge is limited to knowing enough to start using MARC::Record's modules.</p>
+		<p>
+		<hr>
+		</p>
+		<p>Copyright (c) 2003-2013<br>
+		Bryan Baldus<br>
+		eijabb@cpan.org</p>
+		<p>Last updated June 23, 2013.
+	</body>
+
+</html>

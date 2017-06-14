@@ -1,0 +1,57 @@
+<html>
+
+	<head>
+		<meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+		<title>Bryan's MARC Perl readme</title>
+	</head>
+
+	<body bgcolor="white">
+		This site contains a collection of MARC-related Perl scripts,<br>
+		for cleaning and manipulating files of MARC21/USMARC records.<br>
+		These were developed under MacOS 9.2.2, using MacPerl 5.8.0a2.<br>
+		They have been tested on WindowsXP, using ActiveState Perl 5.8.?.
+		<p><b>Requirements:</b></p>
+		<p>MARC::Record distribution (v. 1.40 (or latest pre-2.0) is latest tested)<br>
+		MARC::BBMARC (Located on this site (<a href="http://home.inwave.com/eija/bryanmodules/">http://home.inwave.com/eija</a>)</p>
+		<p>Business::ISBN and Business::ISSN (for Lintaddition.pm's check_020 and check_022)</p>
+		<p>Also uses Time::HiRes.</p>
+		<p>Some modules and scripts use List::Compare (from CPAN)</p>
+		<p>Please let me know if you have any suggestions for improving these,<br>
+		and use them as you wish.</p>
+		<p><b>Installation:</b></p>
+		<p>Place BBMARC.pm, Lintadditions.pm, and Errorchecks.pm within the MARC directory of the MARC::Record distribution.<br>
+		(actually in the MARC directory of the site_perl or site/lib directory,<br>
+		in the same directory as Record.pm)</p>
+		<p>MARC::Lint::CodeData should go in a Lint directory in the MARC directory mentioned above.</p>
+		<p>MARC::Errorchecks may be able to be installed using the normal installation process--see the tarball for more information.</p>
+		<p>Place other scripts where required to be used by your system.</p>
+		<p>See Manifest for description of each file/script (Manifest is work in progress, and may not be comprehensive).<br>
+		Also see each individual script or module documentation for more info.<br>
+		(I realize POD documentation appearance may not be great, as I skipped that<br>
+		section of the manuals)</p>
+		<p>Most of the main (full record) scripts are wrapped in code (relying upon MARC::BBMARC) that tells<br>
+		when the program starts and stops, elapsed time, and prints a running<br>
+		count every 1000 records.</p>
+		<p><b>About the author:</b></p>
+		<p>Bryan Baldus</p>
+		<p>I am a cataloger/librarian with very limited, programming experience.<br>
+		I began teaching myself Perl, using Coriolis' Perl Black Book,<br>
+		along with online documentation and books, around November, 2003.<br>
+		The extent of my knowledge is limited to knowing enough to start using<br>
+		MARC::Record's modules.</p>
+		<p>
+		<hr>
+		</p>
+		<p>COPYRIGHT AND LICENSE</p>
+		<p>This software is free software and may be distributed under the same terms<br>
+		as Perl itself.</p>
+		<p>
+		<hr>
+		</p>
+		<p>Copyright (C) 2003-2005<br>
+		Bryan Baldus<br>
+		eijabb@cpan.org</p>
+		<p>Last updated July 16, 2005.
+	</body>
+
+</html>
