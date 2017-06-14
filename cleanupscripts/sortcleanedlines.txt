@@ -1,0 +1,66 @@
+#!perl
+
+=head2 Description
+
+Sort cleaned lines
+
+Input should be result of fieldextraction.pl.
+Works best on file that has already gone through
+cleanexport010andgreater.pl or
+controlfieldscleaning.pl
+since these remove counts at beginning of lines
+Sorts lines in input file.
+
+To do: Account for uncleaned files, sorting by leading numbers, 
+as integers (so 10 comes after 9, rather than 1)
+
+=cut
+
+print "Input file: "; 
+$inputfile = <>; 
+chomp $inputfile; 
+$inputfile =~ s/^\"(.*)\"$/$1/; 
+print "Export file: "; 
+$exportfile = <>; 
+chomp $exportfile; 
+$exportfile =~ s/^\"(.*)\"$/$1/; 
+open (IN, "<$inputfile") || die ("can't open in"); 
+open (OUT, ">$exportfile") || die ("can't open out"); 
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+
+my $linecount = 0; 
+my %countlines; 
+while (my $line = <IN>) { 
+chomp $line; 
+$countlines{$line}++; 
+$linecount++; 
+} 
+for my $sortedline (sort keys %countlines) 
+{print OUT "$sortedline\n" 
+;} 
+close IN; 
+close OUT; 
+
+print "$linecount lines cleaned\n"; 
+print "Press Enter to quit"; 
+<>;
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

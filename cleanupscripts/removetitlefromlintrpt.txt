@@ -1,0 +1,64 @@
+#!perl
+
+=head2
+
+
+Remove Title from Lint Report--removes titles from lintallchecks' output file.
+
+=cut 
+
+print "Input file: ";
+$inputfile = <>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print "Export file: ";
+$exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+
+open (IN, "<$inputfile") || die ("can't open in");
+
+open (OUT, ">$exportfile") || die ("can't open out");
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+
+my $linecount = 0;
+my @outputlines = ();
+
+while (my $line = <IN>) {
+chomp $line;
+
+#split line into array (of form 'controlno \t title \t errors \t ... [errors \t etc.]')
+my @linearray = split ("\t", $line);
+#put line back together for outputting
+push @outputlines, (join ("\t", @linearray[0,2..$#linearray]));
+
+}
+print OUT join ("\n", @outputlines, "\n");
+
+close IN;
+
+close OUT;
+print scalar @outputlines, " lines identified\n";
+print "Press Enter to quit";
+<>;
+
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

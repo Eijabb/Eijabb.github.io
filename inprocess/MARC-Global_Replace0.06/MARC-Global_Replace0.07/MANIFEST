@@ -1,0 +1,9 @@
+bin/global_replace_ident.pl
+bin/parsedeathdateslists.pl
+Changes
+lib/MARC/Global_Replace.pm
+Makefile.PL
+MANIFEST
+README
+t/00.load.t
+TODO.txt

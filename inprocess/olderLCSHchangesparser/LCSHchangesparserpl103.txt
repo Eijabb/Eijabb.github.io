@@ -1,0 +1,440 @@
+#!perl
+
+#my VERSION = 1.03;
+
+=head1 NAME
+
+LCSH Changes parser2 
+
+Differs from previous parser in being a new version, with modifications.
+The original works ok to create a list of basic changed headings, but has trouble with some.
+It also skips lines that are cancelled but have no direct new heading.
+This version is a test version, attempting to improve how the original works.
+It may also include code for creating the base file of headings to change.
+
+=head2 DESCRIPTION
+
+Parses LCSH weekly list to find cancelled and changed headings.
+The input folder is a path to a dir of plaintext copy of the Weekly list(s).
+Creates a temporary file to store a cleaned version of input.
+The temporary file has leading and trailing spaces removed.
+Outputs each file of changed headings in a tab-delimited output file as follows:
+Tag number \t Old heading \t New heading
+Also outputs a consolidated list of all changed headings in a separate file.
+
+Prints problem headings (cancelled heading is not followed by a new heading) to a bad.txt file in the cleaned directory.
+This has the tagno, old heading, bad heading (or 2nd line after the cancelled old heading), and file name containing the bad heading.
+
+
+=head2 USAGE
+
+Save LCSH weekly list(s) to a folder/directory, in plain text.
+
+Run the script, specifying (after launch, at the prompt) the path to the 
+directory containing the lists to be cleaned.
+
+Output directory will be a 'cleaned' directory inside of the input dir.
+
+=head2 TO DO
+
+Account for change in tag number. Add new tag number after old heading.
+(So have Old tag\tOld Heading\tNew tag\tNew heading)
+
+Account for 1xx followed by 260 followed by new 1xx.
+
+Testing and scanning code for errors.
+-Verify that all needed lines are copied to output.
+-Verify that line break removal does not negatively impact headings themselves.
+
+Parse the headings to look for new headings that have become old headings.
+
+Change -- (dash) into subfield coding in preparation for global replace.
+This may need to be done by the global replace program/script.
+
+Add documentation/comments to improve readability of the code.
+
+=head2 KNOWN PROBLEMS
+
+Trouble with diacritics: currently the parser handles only headings with 
+non-special characters (special being not in a-zA-Z0-9 and some punctuation).
+While saving the file from the Web, some diacritics appear as sybols such as 
+the copyright symbol.
+
+File handling: I have not extensively tested this portion, and know that the 
+Windows file paths have some trouble, though the code works for the most part.
+Problems could occur if a file is dropped in to give the path, instead of a dir.
+
+=head2 VERSION HISTORY
+
+Version 1.03: Updated May 31, 2005
+
+ -Revised to add new tag between old heading and new heading.
+
+Version 1.02: Updated Aug. 25-Oct. 2004.
+
+-Began work on matching changed new headings.
+--Uses new hash of old matched with new and tagno.
+---This may be used to print the comprehensive list (currently that list is built as each file is parsed).
+--If new heading also appears as old heading it is reported somewhere.
+-Started thinking about how to accomplish subfield coding.
+--This may take place in another program
+---Perhaps this parser will simply stop at creating tag\told\tnew lists.
+---That list (comprehensive All file) would be parsed by another script for subfield coding, on way to global SH replacement.
+
+Version 1.01: From original creation to version 1.02.
+
+-Added tag number change to 6xx.
+-Basic file manipulation
+--Added printing of All and Bad comprehensive lists in addition to individual weekly files.
+--Temporary files are also printed as non-temporary files during testing.
+-Basic parsing of headings into tag\told\tnew lists.
+--Now prints (to Bad output file) 260 and 682 fields for old headings without new (in 1xx).
+--Does not deal with dashes yet (subfield coding).
+
+
+Initial versions unnumbered.
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use warnings;
+use MARC::BBMARC;
+use IO::File;
+use File::Temp;
+use File::Find;
+use File::Spec;
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to LCSH Changes parser\n");
+print <<DESCOFSCRIPT;
+Parses LCSH weekly list to find cancelled and changed headings.
+The input file is a plaintext copy of the Weekly list.
+Creates a temporary file to store a cleaned version of input.
+The temporary file has leading and trailing spaces removed.
+Outputs the changed headings in a tab-delimited output file as follows:
+Tag number \t Old heading \t New heading
+DESCOFSCRIPT
+
+##############################################
+######### Directory manipulation #############
+##############################################
+
+#get directory name containing files to clean
+
+print ("\nWhat is the input directory? ");
+my $inputdir=<>;
+chomp $inputdir;
+#remove quotes from dropped in paths
+$inputdir =~ s/^\"(.*)\"$/$1/;
+my $root_dir = $inputdir;
+
+#get an absolute path to the directory in case a relative path was passed, ignoring filename if one was passed
+my $abs_path = File::Spec->rel2abs( $root_dir ) ;
+$root_dir = $abs_path;
+print "$abs_path absolute\n";
+my @filestoclean;
+
+#get list of text files in the directory to be cleaned
+find( {wanted => \&process, follow=>0}, $root_dir);
+
+sub process {
+
+	my $cur_file = $File::Find::name;
+	return unless (($File::Find::dir eq $root_dir) && (-f $cur_file && -T $cur_file));
+	push @filestoclean, $cur_file;
+
+} # process
+
+#make a new directory for cleaned files
+my $cleandirname;
+if (($^O eq 'MacOS') && ($root_dir =~ /:$/)) {$cleandirname = 'cleaned:';}
+elsif (($^O eq 'MSWin32') && ($root_dir =~ /\\.*$/)) {$cleandirname = '\\cleaned\\';}
+#elsif ($root_dir =~ /\/$/){$cleandirname = 'cleaned/';}
+else {die "cleandirname could not be made, $!\n";}
+
+my $cleaned_dir = $root_dir.$cleandirname;
+
+mkdir $cleaned_dir, 0744;
+
+my $allreplacedout = $cleaned_dir.'all.txt';
+open (OUTALL, ">$allreplacedout") or die "can not open $allreplacedout, $!\n"; 
+my $badhdg = $cleaned_dir.'bad.txt';
+open (BAD, ">$badhdg") or die "can not open $badhdg, $!\n"; 
+
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $allreplacedout);
+MacPerl::SetFileInfo('R*ch', 'TEXT', $badhdg);
+}
+# @badheadingstoreturn will be used for printing the bad headings (for manual check)
+my @badheadingstoreturn = ();
+#count for all cancelled headings
+my $totalcount = 0;
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+#declare %headings, which will store old headings matched to new headings along with the tag number
+#e.g. %headings = ('Aged' => {tag => 650, new =>'Older people'})
+my %headings;
+#go through each file  
+foreach my $filetoclean (@filestoclean) {
+
+	#get file name portion of path
+	(my $volume, my $directories, my $filename) = File::Spec->splitpath( $filetoclean);
+
+	##### File handling initialization ######
+	#prompt for updated file
+	my $infh = new IO::File;
+
+	$infh->open("<$filetoclean"); 
+	print ("Opened $filetoclean\n");
+	
+	#create temporary file to store file while it is being cleaned
+	my $tempfile = File::Temp::tempfile() or die "can not open temporary file, $!\n";
+
+	#set final export file name and directory
+	my $exportfile = $cleaned_dir.$filename;
+	open(OUT, ">$exportfile")  or die "can not open out $exportfile, $!\n";
+
+	my $exportfile3 = $exportfile.".tmp";
+	open(OUT3, ">$exportfile3")  or die "can not open out $exportfile, $!\n";
+
+
+	if ($^O eq 'MacOS') {
+		MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+		MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile3);
+	}
+
+
+	#clean up trailing and leading spaces
+	#read original file lines into an array
+	my @filelines = $infh->getlines;
+
+LINES:	for (my $lineno = 0; $lineno <= $#filelines-1; $lineno++) {
+		my $firstline = $filelines[$lineno];
+		chomp $firstline;
+		my $secondline = $filelines[$lineno+1];
+		chomp $secondline;
+
+		#remove trailing spaces
+		$firstline =~ s/\s+$//;
+		$secondline =~ s/\s+$//;
+
+		#remove leading spaces, asterisks, (A), and (C) before tagno
+		$firstline =~ s/^[*\s\(\)AC]*(\d{3}\s)/$1/;
+		$secondline =~ s/^[*\s\(\)AC]*(\d{3}\s)/$1/;
+		#remove unnecessary breaks in fields
+		if ($secondline =~ /^\s+/) {
+			#then it is part of firstline
+			$secondline =~ s/^\s+//;
+			#add it to first line
+			$firstline .= "  $secondline";
+			#add one to line number to skip 2nd line next  time through for loop
+			$lineno++;
+			#check for more lines associated with this record
+			until ($filelines[$lineno+1] =~ /(^[*\s\(\)AC]*(\d{3}))|(^\s*$)/) {
+#stop when summary of decisions is reached
+## if this is not present, there may be problems.
+				last LINES if $filelines[$lineno] =~ /SUMMARY OF DECISIONS/i;
+				$secondline = $filelines[$lineno+1];
+				chomp $secondline;
+				#remove trailing spaces
+				$secondline =~ s/\s+$//;
+				$secondline =~ s/^[*\s\(\)AC]*(\d{3}\s)/$1/;
+				#remove unnecessary breaks in fields
+				if ($secondline =~ /^\s+/) {
+					#then it is part of firstline
+					$secondline =~ s/^\s+//;
+					#add it to first line
+					$firstline .= "  $secondline";
+					#add one to line number to skip 2nd line next  time through for loop
+					$lineno++;
+				} #if second line starts with space (until loop)
+			} #until blank line
+		} #if second line starts with space (for loop)
+		print $tempfile ("$firstline\n");
+$lineno = $#filelines if $filelines[$lineno] =~ /SUMMARY OF DECISIONS/i;
+#print to test temp file (that will stay around)
+print OUT3 ("$firstline\n");
+
+	} #for lines in orig. input file
+
+	my $lastline = $filelines[$#filelines];
+	print $tempfile ("$lastline\n");
+
+
+	$infh->close;
+
+	#go to start of $tempfile
+	seek $tempfile, 0, 0;
+
+	#################################################
+	######### Start condensing to cancelled #########
+	#################################################
+
+	#reset record separator to two returns/line feeds in a row
+	use constant END_OF_RECORD	    => "\n\n";
+	local $/ = END_OF_RECORD;
+
+	my $cancelcount = 0;
+	#### Start while loop through records/headings in file #####
+
+	while (my $record = <$tempfile>) {
+		#put each line into a separate array slot
+		my @reclines = split ("\n", $record);
+
+		my @newreclines;
+		#discard non-1xx lines and push 1xx onto new record line array
+		#also keep 260 and 682 (which explain cancelled lines with no new heading)
+		foreach my $recline (@reclines) {
+			unless ($recline =~ /(^1\d\d\s)|(^260 )|(^682 )/) {$recline = '';}
+			else {push @newreclines, $recline;}
+		}
+		#add record separator (new line character) to new record
+		push @newreclines, "\n";
+
+		### For testing??? ###
+		#my $newrec = join ("\n", @newreclines);
+		#print OUT "$newreclines[0]\n";
+		######################
+
+		#format of each element of @newreclines of interest:
+		#(1xx)\s\s(HDG)\s\s+CANCEL
+
+		if ($newreclines[0] =~ /^(1\d\d)\s\s([\-.,':?\w\(\)\/\s]+)\s\s+CANCEL/) {
+			my $tagno = $1;
+			my $oldhdg = $2;
+			$oldhdg =~ s/\s+$//;
+			#verify that cancelled hdg has been replaced by new 1xx on 2nd line
+			if ($newreclines[1] =~ /^(1\d\d)\s\s([-.,':?\w\(\)\/\s]+)\s\s+/){
+				my $newtag = $1;
+				my $newhdg = $2;
+				$newhdg =~ s/\s+$//;
+				#add 500 to $tagno and $newtag (so that it becomes 6xx)
+				$tagno += 500;
+				$newtag += 500;
+				print OUT "$tagno\t$oldhdg\t$newtag\t$newhdg\n";
+				print OUTALL "$tagno\t$oldhdg\t$newtag\t$newhdg\n";
+				
+				#check for duplicate old headings?
+				unless ($headings{$oldhdg}) {
+					#add old, tagno and new to hash of headings
+					$headings{$oldhdg}{tag} = $tagno;
+					$headings{$oldhdg}{newtag} = $newtag;
+					$headings{$oldhdg}{new} = $newhdg;
+				}
+				else {print "$oldhdg may be duplicate?\n";}
+				$totalcount++;
+				$cancelcount++;
+			}
+			#if replacement heading isn't next, add to list of bad headings
+			else {push @badheadingstoreturn,  "$newreclines[0]\t$newreclines[1] in $filename";}
+		} #if hdg was cancelled
+
+		###################################################
+		### add to count for user notification ###
+		$runningrecordcount++;
+		MARC::BBMARC::counting_print ($runningrecordcount);
+		###################################################
+	} #while
+
+	close $tempfile;
+	close OUT;
+	print "\n";
+	print "$runningrecordcount records parsed\n$cancelcount headings cancelled in $filename\n", scalar @badheadingstoreturn, " bad headings so far\n";
+} # foreach filetoclean
+
+#print out the bad headings
+my @have682 = ();
+foreach my $badheadingtoreturn (@badheadingstoreturn) {
+	#hold 682s for last
+	if ($badheadingtoreturn =~ /\t682 /) {push @have682, $badheadingtoreturn}
+	else {print BAD $badheadingtoreturn, "\n";}
+}
+print BAD join "\n", (@have682, "\n");
+#add extra lines at end of bad to separate from changed new headings
+print BAD "\n", "-"x20, "\n";
+close OUTALL;
+
+#open another output file for the hash version of the tagno, old, new
+#$allreplacedout should be the directory path+all.txt
+my $hashexport = $allreplacedout."hash.txt";
+#remove internal .txt so name should be path+"allhash.txt"
+$hashexport =~ s/\.txthash\.txt$/hash\.txt/;
+open(OUTHASH, ">$hashexport")  or die "can not open out $hashexport, $!\n";
+if ($^O eq 'MacOS') {
+	MacPerl::SetFileInfo('R*ch', 'TEXT', $hashexport);
+}
+my $changednewcount = 0;
+#look at each heading for new headings that are also old headings
+foreach my $oldhdg (sort keys %headings) {
+	my $oldtag = $headings{$oldhdg}{tag};
+	my $newhdg = $headings{$oldhdg}{new};
+	my $newtag = $headings{$oldhdg}{newtag};
+
+	if ($headings{$newhdg}) {
+		print BAD ("Changed heading: Orig.: $oldtag\t$oldhdg\tNext: $newtag\t$newhdg\tNew: ", $headings{$newhdg}{newtag}, "\t", $headings{$newhdg}{new}, "\n");
+		$changednewcount++;
+	}
+	print OUTHASH ($headings{$oldhdg}{tag}, "\t", $oldhdg, "\t", $headings{$oldhdg}{newtag}, "\t", $headings{$oldhdg}{new}, "\n");
+}
+
+print "$totalcount records cancelled in all files\n", scalar @badheadingstoreturn, " bad headings in all files\n";
+print "$changednewcount headings are both old and new, see end of bad.txt\n";
+
+close BAD;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+print "Press Enter to continue";
+<>;
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2005
+
+=cut

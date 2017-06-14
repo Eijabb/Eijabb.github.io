@@ -1,0 +1,42 @@
+#!perl
+
+=head2
+
+Find bad 260 - looks in extracted field output file for 260s ending without period.
+
+To do: Look for other problems in 260.
+
+=cut
+
+use MARC::BBMARC;
+
+print "Input file:";
+my $extractedinputfile = <>;
+chomp $extractedinputfile;
+$extractedinputfile =~ s/^\"(.*)\"$/$1/;
+print "Output file for bad fields:";
+$extractedbadfields = <>;
+chomp $extractedbadfields;
+$extractedbadfields =~ s/^\"(.*)\"$/$1/;
+open (EXTRACTEDFILE, "<$extractedinputfile") or die "cannot open controlnofile";
+open (BADOUTPUTFILE, ">$extractedbadfields") or die "can't open badoutput";
+
+my $runningrecordcount=0;
+
+#read line from file
+while (my $line = <EXTRACTEDFILE>){
+###Find oddities (control numbers only)
+if ($line !~ m/\.\t\t/)
+ {print BADOUTPUTFILE ("$line\n");}
+
+
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+
+} #while
+close EXTRACTEDFILE;
+close OUTPUTFILE;
+close BADOUTPUTFILE;
+
+print "\n\nPress Enter to quit";
+<>;

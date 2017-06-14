@@ -1,0 +1,327 @@
+#!perl
+
+=head2 NAME and DESCRIPTION
+
+300 subfield 'b' vs. presence of coding for illustrations in 008/18-21.
+This script is preparation for a similar subroutine in [MARC::]Errorchecks.pm.
+
+Ignores CIP records completely.
+Ignores non-book records completely (for the purposes of this script. The Errorchecks subroutine may cover all materials, an may be a broad check of each 300 subfield against proper values.
+If 300 'b' has wording, reports errors if matching 008/18-21 coding is not present.
+If 008/18-21 coding is present, but similar wording is not present in 300, reports errors.
+
+Note: plates are an exception, since they are noted in $a rather than $b of the 300.
+So, they need to be checked twice--once if 'f' is the only code in the 008/18-21, and again amongst other codes.
+
+=head2 LIMITATIONS
+
+Only accounts for a single 300 field (300 was recently made repeatable).
+
+Older/more specific code checking is limited due to lack of use.
+For example, coats of arms, facsim., etc. are usually now given as just 'ill.'
+So the error check allows either the specific or just ill. for all except maps.
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+#use MARC::File::USMARC;
+use MARC::BBMARC;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to script\n");
+
+##### File handling initialization ######
+#prompt for input file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile");
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+#initialize $infile as new usmarc file object
+#my $infile = MARC::File::USMARC->in( "$inputfile" );
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+my @warningstoreturn = ();
+
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+
+##get leader and retrieve its relevant bytes (mattype ('a' for 'books')), 
+##$encodelvl ('8' for CIP, ' ' [space] for 'full')
+##$biblvl will be useful in future version, where seriality matters
+
+my $leader = $record->leader();
+my $mattype = substr($leader, 6, 1); 
+#my $biblvl = substr($leader, 7, 1);
+my $encodelvl = substr($leader, 17, 1);
+
+my $controlno = $record->field('001')->as_string();
+
+#skip CIP-level records
+if ($encodelvl eq '8') {next;}
+#####################################
+#####################################
+### skip non-book records for now ###
+elsif ($mattype ne 'a') {next;}
+#####################################
+#####################################
+#otherwise, match 008/18-21 vs. 300.
+else {
+
+my $field008 = $record->field('008')->as_string();
+#illustration codes are in bytes 18-21
+my $illcodes = substr($field008, 18, 4);
+my ($hasill, $hasmap, $hasport, $hascharts, $hasplans, $hasplates, $hasmusic, $hasfacsim, $hascoats, $hasgeneal, $hasforms, $hassamples, $hasphono, $hasphotos, $hasillumin);
+
+
+
+#make sure field 300 exists
+if ($record->field('300')) {
+#get 300 field as a MARC::Field object
+my $field300 = $record->field('300');
+
+############## basic checks ##########
+# if $illcodes not coded and no subfield 'b' no problem so move on
+if (($illcodes =~ /^\s{4}$/) && !($field300->subfield('b'))) {next;} 
+# 008 is coded blank (4 spaces) but 300 subfield 'b' exists so error
+elsif (($illcodes =~ /^\s{4}$/) && ($field300->subfield('b'))) {push @warningstoreturn, ("$controlno\t008\t:\tbytes 18-21 (Illus.) coded blank but 300 has subfield b"); next;} 
+# 008 has valid code but no 300 subfield 'b' so error
+elsif (($illcodes =~ /[a-e,g-m,o,p]/) && !($field300->subfield('b'))) {push @warningstoreturn, ("$controlno\t008\t:\tbytes 18-21 (Illustrations) have valid code but 300 has no subfield b"); next;} 
+
+##############
+#otherwise, check 008/18-21 vs. 300 subfield 'b'
+# valid coding in 008/18-21 and have 300 $b
+elsif (($illcodes =~ /[a-e,g-m,o,p]/) && ($field300->subfield('b'))) {
+
+my $subfieldb = $field300->subfield('b');
+
+#declare subroutine prior to call
+##subroutine is at end of script during testing
+###plan to move to here when code works
+parse008vs300b($$);
+
+# start comparing
+#call subroutine to do main checking
+my $illcodewarnref = parse008vs300b($illcodes, $subfieldb);
+push @warningstoreturn, (join "\t", $controlno, @$illcodewarnref) if (@$illcodewarnref);
+
+#take care of special case of plates when other codes are present
+if (($illcodes =~ /f/) && ($field300->subfield('a'))) {
+my $subfielda = $field300->subfield('a');
+#report error if 'plate' does not appear in 300$a
+unless ($subfielda =~ /plate/) {push @warningstoreturn, ("$controlno\t300\t:\tbytes 18-21 (Illustrations) is coded f for plates but 300 subfield a is $subfielda "); }}
+
+} #elsif valid 008/18-21 and 300$b exists
+
+#elsif $illcodes is coded only 'f' (plates), which are noted in 300$a
+elsif (($illcodes =~ /f/) && ($field300->subfield('a'))) {
+my $subfielda = $field300->subfield('a');
+#report error if 'plate' does not appear in 300$a
+unless ($subfielda = /plate/) {push @warningstoreturn, ("$controlno\t300\t:\tbytes 18-21 (Illustrations) is coded f for plates but 300 subfield a is $subfielda "); 
+next;
+}
+}
+
+#otherwise, not valid 008/18-21
+else {push @warningstoreturn, ("$controlno\t008\t:\tbytes 18-21 (Illustrations) have a least one invalid character"); next;}
+
+} # if record has 300 field
+
+#300 does not exist in full book record so report error
+else {push @warningstoreturn, ("$controlno\t300\t:\tRecord has no 300"); next;}
+
+} #else (record is not CIP and is a book-type)
+
+} # while
+#print out errors
+print OUT join ("\n", @warningstoreturn, "\n");
+
+print (scalar @warningstoreturn, " errors were found\n");
+
+close $inputfile;
+close OUT;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+print "\n\nPress Enter to quit";
+<>;
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut
+#!perl
+
+=head2
+008 illustration parse subroutine
+
+checks 008/18-21 code against 300 $b
+
+=head2 WHY?
+
+To simplify the 300 vs. 008booksill subroutine, which had many if-then statements. This moves the additional checking conditionals out of the way.
+It may be integrated back into the main subroutine once it works.
+
+=head2 parse008vs300b($illcodes, $field300subb)
+
+$illcodes is bytes 18-21 of 008
+$subfieldb is subfield 'b' of record's 300 field
+
+=cut
+
+sub parse008vs300b($$) {
+
+my $illcodes = shift;
+my $subfieldb = shift;
+
+#parse $illcodes
+my ($hasill, $hasmap, $hasport, $hascharts, $hasplans, $hasplates, $hasmusic, $hasfacsim, $hascoats, $hasgeneal, $hasforms, $hassamples, $hasphono, $hasphotos, $hasillumin);
+($illcodes =~ /a/) ? ($hasill = 1) : ($hasill = 0);
+($illcodes =~ /b/) ? ($hasmap = 1) : ($hasmap = 0);
+($illcodes =~ /c/) ? ($hasport = 1) : ($hasport = 0);
+($illcodes =~ /d/) ? ($hascharts = 1) : ($hascharts = 0);
+($illcodes =~ /e/) ? ($hasplans = 1) : ($hasplans = 0);
+($illcodes =~ /f/) ? ($hasplates = 1) : ($hasplates = 0);
+($illcodes =~ /g/) ? ($hasmusic = 1) : ($hasmusic = 0);
+($illcodes =~ /h/) ? ($hasfacsim = 1) : ($hasfacsim = 0);
+($illcodes =~ /i/) ? ($hascoats = 1) : ($hascoats = 0);
+($illcodes =~ /j/) ? ($hasgeneal = 1) : ($hasgeneal = 0);
+($illcodes =~ /k/) ? ($hasforms = 1) : ($hasforms = 0);
+($illcodes =~ /l/) ? ($hassamples = 1) : ($hassamples = 0);
+($illcodes =~ /m/) ? ($hasphono = 1) : ($hasphono = 0);
+($illcodes =~ /o/) ? ($hasphotos = 1) : ($hasphotos = 0);
+($illcodes =~ /p/) ? ($hasillumin = 1) : ($hasillumin = 0);
+
+my @illcodewarns = ();
+
+# Check and report errors
+
+#if 008/18-21 has code 'a', 300$b needs to have 'ill.' 
+if ($hasill) {push @illcodewarns, ("300\t:\tbytes 18-21 have code 'a' but 300 subfield b is $subfieldb") unless ($subfieldb =~ /ill\./);}
+
+#if 008/18-21 has code 'b', 300$b needs to have 'map' (or 'maps') 
+if ($hasmap) {push @illcodewarns, ("300\t:\tbytes 18-21 have code 'b' but 300 subfield b is $subfieldb") unless ($subfieldb =~ /map/);}
+
+#if 008/18-21 has code 'c', 300$b needs to have 'port.' or 'ports.' (or ill.) 
+if ($hasport) {push @illcodewarns, ("300\t:\tbytes 18-21 have code 'c' but 300 subfield b is $subfieldb") unless ($subfieldb =~ /port\.|ports\.|ill\./);}
+
+#if 008/18-21 has code 'd', 300$b needs to have 'chart' (or 'charts') (or ill.) 
+if ($hascharts) {push @illcodewarns, ("300\t:\tbytes 18-21 have code 'd' but 300 subfield b is $subfieldb") unless ($subfieldb =~ /chart|ill\./);}
+
+#if 008/18-21 has code 'e', 300$b needs to have 'plan' (or 'plans') (or ill.) 
+if ($hasplans) {push @illcodewarns, ("300\t:\tbytes 18-21 have code 'e' but 300 subfield b is $subfieldb") unless ($subfieldb =~ /plan|ill\./);}
+
+### Skip 'f' for plates, which are in 300$a ###
+
+#if 008/18-21 has code 'g', 300$b needs to have 'music' (or ill.) 
+if ($hasmusic) {push @illcodewarns, ("300\t:\tbytes 18-21 have code 'g' but 300 subfield b is $subfieldb") unless ($subfieldb =~ /music|ill\./);}
+
+#if 008/18-21 has code 'h', 300$b needs to have 'facsim.' or 'facsims.' (or ill.) 
+if ($hasfacsim) {push @illcodewarns, ("300\t:\tbytes 18-21 have code 'h' but 300 subfield b is $subfieldb") unless ($subfieldb =~ /facsim\.|facsims\.|ill\./);}
+
+#if 008/18-21 has code 'i', 300$b needs to have 'coats of arms' (or 'coat of arms'?) (or ill.) 
+if ($hascoats) {push @illcodewarns, ("300\t:\tbytes 18-21 have code 'i' but 300 subfield b is $subfieldb") unless ($subfieldb =~ /coats of arms|ill\./);}
+
+#if 008/18-21 has code 'j', 300$b needs to have 'geneal. table' (or 'geneal. tables') (or ill.) 
+if ($hasgeneal) {push @illcodewarns, ("300\t:\tbytes 18-21 have code 'j' but 300 subfield b is $subfieldb") unless ($subfieldb =~ /geneal\. table|ill\./);}
+
+#if 008/18-21 has code 'k', 300$b needs to have 'forms' (or ill.) 
+if ($hasforms) {push @illcodewarns, ("300\t:\tbytes 18-21 have code 'k' but 300 subfield b is $subfieldb") unless ($subfieldb =~ /forms|ill\./);}
+
+#if 008/18-21 has code 'l', 300$b needs to have 'forms' (or ill.) 
+if ($hassamples) {push @illcodewarns, ("300\t:\tbytes 18-21 have code 'l' but 300 subfield b is $subfieldb") unless ($subfieldb =~ /samples|ill\./);}
+
+##########################################
+##########################################
+### I don't know what this is, so for this, report all
+#if 008/18-21 has code 'm', 300$b needs to have 'phono'? (or ill.) 
+if ($hasphono) {push @illcodewarns, ("300\t:\tbytes 18-21 have code 'm' but 300 subfield b is $subfieldb");}
+##########################################
+##########################################
+
+#if 008/18-21 has code 'o', 300$b needs to have 'photo.' or 'photos.' (or ill.) 
+if ($hassamples) {push @illcodewarns, ("300\t:\tbytes 18-21 have code 'o' but 300 subfield b is $subfieldb") unless ($subfieldb =~ /photo\.|photos\.|ill\./);}
+
+##########################################
+##########################################
+### I don't know what this is, so for this, report all
+#if 008/18-21 has code 'p', 300$b needs to have 'illumin'? (or ill.) 
+if ($hasillumin) {push @illcodewarns, ("300\t:\tbytes 18-21 have code 'p' but 300 subfield b is $subfieldb");}
+##########################################
+##########################################
+
+return \@illcodewarns;
+} #sub parse008vs300b
+

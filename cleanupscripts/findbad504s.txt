@@ -1,0 +1,45 @@
+#!perl
+
+=head2 NAME
+
+Find 504s without bibliographical references
+
+=head2
+
+Input file should be result (export file) from fieldextraction.pl or similar file.
+Output file is list of lines matching the desired regular expression.
+
+=cut 
+
+print "Input file: ";
+$inputfile = <>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print "Export file: ";
+$exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+
+open (IN, "<$inputfile") || die ("can't open in");
+open (OUT, ">$exportfile") || die ("can't open out");
+my $linecount = 0;
+while (my $line = <IN>) {
+chomp $line;
+#remove extra spaces between tabs
+$line =~ s/\t\s{7}\@/\t\@/g;
+#remove count, tag, and first subfield code
+$line =~ s/^\d+?\t\d{3}\s[ \d][ \d]\s\@\w\t//;
+
+#use 'if' for positive, 'unless' for negative, or 'if' + !~
+#change back to unless after looking in 500 fields
+if ($line =~ /Includes bibliographical references/) {
+print OUT "$line\n";
+$linecount++;
+}
+}
+close IN;
+close OUT;
+print "$linecount lines identified\n";
+print "Press Enter to quit";
+<>;
+

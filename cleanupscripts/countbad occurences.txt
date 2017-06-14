@@ -1,0 +1,36 @@
+#!perl
+
+=head2 Name and Description
+
+Given extracted field file, splits line into array.
+Adds first elements of array, which represents count of occurences of heading/field (give or take 1 per line).
+Requires that the input file start with count (integer).
+
+=cut
+###############################
+###############################
+use MARC::BBMARC;
+
+print "Input file:";
+my $extractedinputfile = <>;
+chomp $extractedinputfile;
+$extractedinputfile =~ s/^\"(.*)\"$/$1/;
+open (EXTRACTEDFILE, "<$extractedinputfile") or die "cannot open controlnofile";
+
+my $runningrecordcount=0;
+my $fieldcount = 0;
+#read line from file
+while (my $line = <EXTRACTEDFILE>){
+my @linearray;
+@linearray = split ("\t", $line);
+$fieldcount += $linearray[0];
+print "$fieldcount\n";
+
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+} #while
+close EXTRACTEDFILE;
+print "$runningrecordcount lines scanned.\n"
+
+print "\n\nPress Enter to quit";
+<>;

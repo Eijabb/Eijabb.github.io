@@ -1,0 +1,115 @@
+#!perl
+
+=head2 Description
+
+Prints records in human readable form, using
+MARC::BBMARC as_formatted2 style (tabs between subfields and subfield codes).
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+use MARC::BBMARC;
+#MARC::QBI::Misc for file name input (and overwrite protection)
+use MARC::QBI::Misc;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to script\n");
+
+##### File handling initialization ######
+#declare array to store file names
+my @file_names = ();
+#prompt for input file
+my $inputfile_message = "What is the input file? ";
+#call get_file_name for the input file
+my ($inputfile, $error) = MARC::QBI::Misc::get_file_name($inputfile_message, '<');
+die "Error with input file name" if $error;
+push @file_names, $inputfile if $inputfile;
+
+my $outputfile_message = "What is the export file? ";
+my ($exportfile, $error2) = MARC::QBI::Misc::get_file_name($outputfile_message, '>', \@file_names);
+die "Error with export file name" if $error2;
+push @file_names, $exportfile if $exportfile;
+
+open(OUT, ">$exportfile") or die "Can not open $exportfile, $!";
+
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+print OUT $record->MARC::BBMARC::recas_formatted();
+print OUT "\n\n";
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} # while
+
+close $inputfile;
+close OUT;
+print "$runningrecordcount records scanned\n";
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+print "Press Enter to continue";
+<>;
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

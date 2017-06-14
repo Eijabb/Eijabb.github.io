@@ -1,0 +1,107 @@
+#!perl
+
+=head2
+
+Find long records -- finds and counts records longer than 6000 bytes, based on ldr/0-4.
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+#use MARC::File::USMARC;
+use MARC::BBMARC;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Get Leader info\n");
+
+##### File handling initialization ######
+#prompt for updated file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile");
+
+#initialize $infile as new usmarc file object
+#my $infile = MARC::File::USMARC->in( "$inputfile" );
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+my $longrecs = 0;
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+my $leader = $record->leader();
+my $controlno = $record->field('001')->as_string();
+
+#access leader byte with this
+my $reclength = substr($leader,0,5);
+#my $status = substr($leader, 5, 1);
+#my $mattype = substr($leader, 6, 1); 
+#my $biblvl = substr($leader, 7, 1);
+#my $encodelvl = substr($leader, 17, 1);
+#my $catrules = substr($leader, 18, 1);
+if ($reclength > 6000) {
+$longrecs++;
+print OUT "$controlno	$reclength\n";
+}
+
+#update leader like this
+#$record->leader($leader);
+
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} # while
+
+close $inputfile;
+close OUT;
+
+print "$longrecs records are greater than 6000 bytes\n";
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+print "\n";
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+print "Press Enter to continue";
+<>;
+
+#####################
+### END OF PROGRAM ##
+#####################

@@ -1,0 +1,79 @@
+#!perl
+
+=head2
+
+Create control number file.
+
+Takes field extraction output file as input.
+Extracts control numbers from each line.
+Outputs one control number per line.
+
+=cut 
+
+print "Input file (from Fieldextraction results): ";
+$inputfile = <>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print "Export file (list of controlnos): ";
+$exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+
+open (IN, "<$inputfile") || die ("can't open in");
+
+open (OUT, ">$exportfile") || die ("can't open out");
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+
+my $linecount = 0;
+my $controlnocount = 0;
+%counts;
+while (my $line = <IN>) {
+chomp $line;
+#remove ending tabs
+$line =~ s/\t*$//;
+#remove extra spaces between tabs
+$line =~ s/\t\s{7}\@/\t\@/g;
+#two tabs separate control numbers from headings
+my @linearray = split ("\t\t", $line);
+#if heading line had multiple controlnos, split each into its own array position
+my @controlnoarray = split ("\t", $linearray[1]);
+
+foreach (my $i = 0; $i <= $#controlnoarray; $i++) {
+#remove extra space from end of each controlno
+$controlnoarray[$i] =~ s/\s$//;
+#remove beginning spaces from control nos after first
+$controlnoarray[$i] =~ s/^\s// if ($i>0);
+
+print OUT "$controlnoarray[$i]\n";
+
+} 
+$linecount++;
+$controlnocount += scalar @controlnoarray;
+}
+close IN;
+
+close OUT;
+print "$linecount headings identified\n with $controlnocount control numbers\n";
+print "Press Enter to quit";
+<>;
+
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

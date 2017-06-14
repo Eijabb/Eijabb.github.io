@@ -1,0 +1,68 @@
+#!perl
+
+=head2 
+
+Reads in base file, containing headings to compare against.
+Reads in lines from extractedfile, looks for match in base file.
+If match is found, outputs the extractedfile line to new file for manual cleanup.
+
+=cut 
+
+print "File of base headings: ";
+my $baseinputfile = <>;
+chomp $baseinputfile;
+$baseinputfile =~ s/^\"(.*)\"$/$1/;
+
+print "Input file to clean: ";
+my $inputfile  = <>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+
+print "Export file: ";
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+
+open (BASEHDGS, "<$baseinputfile") || die ("can't open base");
+my @baseheadings = ();
+
+while (my $baseline = <BASEHDGS>) {
+chomp $baseline;
+#remove ending periods and trailing spaces
+$baseline =~ /\.\s*$/;
+push @baseheadings, $baseline;
+} # end reading base file
+
+open (IN, "<$inputfile") || die ("can't open in");
+open (OUT, ">$exportfile") || die ("can't open out");
+my $linecount = 0;
+while (my $line = <IN>) {
+chomp $line;
+#remove extra spaces between tabs
+$line =~ s/\t\s{7}\@/\t\@/g;
+
+#remove ending periods and trailing spaces
+#remove count, tag, indicators, and first subfield code and char
+$line =~ s/^\d+?\t\d{3}\s[ \d][ \d]\s\@\w\t//;
+
+#split control nos from heading
+my @linearray = split ("\t\t", $line);
+#break subfields into individual slots
+my @headingarray = split ("\t", $linearray[0]);
+#look at first subfield
+my $lineheading = $headingarray[0];
+$lineheading =~ /\.\s*$/;
+my @grepheadings = grep {$_ eq $lineheading} @baseheadings;
+
+if (@grepheadings) {
+print OUT "$line\n";
+$linecount++;
+}
+}
+close BASEHDGS;
+close IN;
+close OUT;
+print "$linecount lines identified\n";
+print "Press Enter to quit";
+<>;
+

@@ -1,0 +1,40 @@
+#!perl
+
+=head2 Name and Description
+
+Extract File Cleaning (outdated)
+This has been replaced by cleanexport010andgreater.pl
+and controlfieldscleaning.txt.
+
+Asks for file for cleaning (output from field extraction script works best).
+Asks for output filename.
+Removes count of field, tag numbering and indicators, and first subfield a code.
+Fails if first subfield is not subfield a.
+To do: clean control numbers in some way (remove spaces that shouldn't be there).
+To do: Sort lines by $a data.
+
+
+=cut
+
+print "Input file:";
+my $extractedinputfile = <>;
+$extractedinputfile =~ s/^\"(.*)\"$/$1/;
+chomp $extractedinputfile;
+print "Output file:";
+my $extractedoutfile = <>;
+chomp $extractedoutfile;
+$extractedoutfile =~ s/^\"(.*)\"$/$1/;
+#read line from file
+open (EXTRACTEDFILE, "<$extractedinputfile") or die "can't open controlnofile";
+open (OUTPUTFILE, ">$extractedoutfile") or die "can't open output";
+while (my $line = <EXTRACTEDFILE>){
+
+$line =~ s/^[\d]+?\t[\d]{3}?\s[ \d][ \d]\s\@a\t//;
+$line =~ s/\t\s{7}\@/\t\@/g;
+print OUTPUTFILE "$line";
+} #while
+print "done";
+
+print "\n\nPress Enter to quit";
+<>;
+

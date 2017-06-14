@@ -1,0 +1,42 @@
+#!perl
+
+=head2 NAME
+
+Clean Multifield output -- turns output from findmultiplefields into file of only control numbers.
+
+=head2
+
+Output of findmultiplefields is control number, tab, and number of occurances of a specified field.
+This cleanup script removes the tab and the number of occurances.
+This creates a file of control numbers, which can then be used with the extractbycontrolno script.
+
+=cut
+print "Input file: ";
+$inputfile = <>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print "Export file: ";
+$exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+
+open (IN, "<$inputfile") || die ("can't open in");
+open (OUT, ">$exportfile") || die ("can't open out");
+
+my $linecount = 0;
+while (my $line = <IN>) {
+chomp $line;
+
+my @linearray= split ("\t", $line);
+
+print OUT ("$linearray[0]\n");
+
+$linecount++;
+}
+close IN;
+close OUT;
+#close OUTNOTSEARS;
+print "$linecount lines cleaned\n";
+print "Press Enter to quit";
+<>;
+

@@ -1,0 +1,405 @@
+#!perl
+
+=head2 NAME
+
+Video DVD vs. VHS/cassette
+
+=head2 DESCRIPTION
+
+Script to be used as basis for MARC::Errorchecks::video007vs300vs538($record).
+
+Focuses on videocassettes and videodiscs.
+Does not consider coding for motion pictures.
+
+If LDR/06 is 'g' for projected medium,
+(skipping those that aren't)
+and 007 is present,
+at least 1 007 should start with 'v'
+
+If 007/01 is 'd', 300a should have 'videodisc(s)'.
+300c should have 4 3/4 in.
+Also, 538 should have 'DVD' 
+If 007/01 is 'f', 300a should have 'videocassette(s)'
+300c should have 1/2 in.
+Also, 538 should have 'VHS format'
+
+=head2 LIMITATIONS
+
+Checks only videocassettes (1/2) and videodiscs (4 3/4).
+Current version reports problems with other forms of videorecordings.
+
+Accounts for existence of only 1 300 field.
+
+Looks at only 1st subfield 'a' and 'c' of 1st 300 field.
+
+=head2 TO DO
+
+Account for motion pictures and videorecordings not on DVD (4 3/4 in.) or VHS cassettes.
+
+Check proper plurality of 300a (1 videodiscs -> error; 5 videocassette -> error)
+
+Monitor need for changes to sizes, particularly 4 3/4 in. DVDs.
+
+Expand allowed terms for 538 as needed.
+
+Update to allow SMDs of conventional terminology ('DVD') if such a rule passes.
+
+Deal with multiple 300 fields.
+
+Check GMD in 245$h
+
+Clean up redundant code.
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+use MARC::BBMARC;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Video format cross checks script\n");
+
+##### File handling initialization ######
+#prompt for input file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile");
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+my @warningstoreturn = ();
+
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+
+	my $leader = $record->leader();
+	my $mattype = substr($leader, 6, 1); 
+	#my $encodelvl = substr($leader, 17, 1);
+
+	#skip non-videos
+	next unless $mattype eq 'g';
+
+	my $controlno = $record->field('001')->as_string();
+
+	my @fields007 = ();
+
+	if ($record->field('007')) {
+		foreach my $field007 ($record->field('007'))
+		{
+			my $field007string = $field007->as_string(); 
+			#skip non 'v' 007s
+			next unless ($field007string =~ /^v/);
+			#add 'v' 007s to @fields007 for further processing
+			push @fields007, $field007string;
+		} # foreach subfield 007
+	} # if 007s exist
+	else {
+		#warn about nonexistent 007 in 'g' type records
+		push @warningstoreturn, join ('', "$controlno\t", "007: Record is coded $mattype but 007 does not exist.");
+	} # else no 007s
+
+	#report existence of multiple 'v' 007s
+	if ($#fields007 > 0){
+		push @warningstoreturn, join ('', "$controlno\t", "007: Multiple 007 with first byte 'v' are present.");
+	}
+	#report nonexistence of 'v' 007 in 'g' type recor
+	elsif ($#fields007 == -1) {
+		push @warningstoreturn, join ('', "$controlno\t", "007: Record is coded $mattype but no 007 has 'v' as its first byte.");
+	}
+	#else have exactly one 007 'v'
+	else {
+		# get bytes from the 007 for use in cross checks
+		my @field007bytes = split '', $fields007[0];
+		#report problem getting 'v' as first byte
+		print "Problem getting first byte $fields007[0]" unless ($field007bytes[0] eq 'v');
+
+		#declare variables for later
+		my ($iscassette007, $isdisc007, $subfield300a, $subfield300b, $subfield300c, $viddiscin300, $vidcassettein300, $bw_only, $col_only, $col_and_bw, $dim300, $dvd538, $vhs538, $notdvd_or_vhs_in538);
+
+		#check for byte 1 having 'd'--videodisc (DVD or VideoCD) and normal pattern
+		if ($field007bytes[1] eq 'd') {
+			$isdisc007 = 1;
+			unless ( #normal 'vd _[vz]aiz_'
+			$field007bytes[4] =~ /^[vz]$/ && #DVD or other
+			$field007bytes[5] eq 'a' &&
+			$field007bytes[6] eq 'i' &&
+			$field007bytes[7] eq 'z'
+			) {
+				push @warningstoreturn, join ('', "$controlno\t", "007: Coded 'vd' for videodisc but bytes do not match normal pattern.");
+			} # unless normal pattern
+		} # if 'vd'
+
+		#elsif check for byte 1 having 'f' videocassette
+		elsif ($field007bytes[1] eq 'f') {
+			$iscassette007 = 1;
+			unless ( #normal 'vf _baho_'
+			$field007bytes[4] eq 'b' &&
+			$field007bytes[5] eq 'a' &&
+			$field007bytes[6] eq 'h' &&
+			$field007bytes[7] eq 'o'
+			) {
+				push @warningstoreturn, join ('', "$controlno\t", "007: Coded 'vf' for videocassette but bytes do not match normal pattern.");}
+		} # elsif 'vf'
+
+		#get 300 and 538 fields for cross-checks
+		my $field300 = $record->field('300') if ($record->field('300'));
+
+		#report nonexistent 300 field
+		unless ($field300){
+				push @warningstoreturn, join ('', "$controlno\t", "300: May be missing.");		
+		} #unless 300 field exists
+
+		#get subfields 'a' 'b' and 'c' if they all exist
+		elsif ($field300->subfield('a') && $field300->subfield('b') && $field300->subfield('c')) {
+			$subfield300a = $field300->subfield('a');
+			$subfield300b = $field300->subfield('b');
+			$subfield300c = $field300->subfield('c');
+		} #elsif 300a 300b and 300c exist
+
+		#report missing subfield 'a' 'b' or 'c'
+		else {
+			push @warningstoreturn, join ('', "$controlno\t", "300: Subfield 'a' is missing.") unless ($field300->subfield('a'));
+			push @warningstoreturn, join ('', "$controlno\t", "300: Subfield 'b' is missing.") unless ($field300->subfield('b'));
+			push @warningstoreturn, join ('', "$controlno\t", "300: Subfield 'c' is missing.") unless ($field300->subfield('c'));
+		} # 300a or 300b or 300c is missing
+
+######## get elements of each subfield ##########
+		######### get SMD ###########
+		if ($subfield300a) {
+			if ($subfield300a =~ /videodisc/) {
+				$viddiscin300 = 1;
+			} #300a has videodisc
+			elsif ($subfield300a =~ /videocassette/) {
+				$vidcassettein300 = 1;
+			} #300a has videocassette
+			else {
+				push @warningstoreturn, join ('', "$controlno\t", "300: Not videodisc or videocassette, $subfield300a.");
+			} #not videodisc or videocassette in 300a
+		} #if subfielda exists
+		###############################
+
+		###### get color info #######
+		if ($subfield300b) {
+			#both b&w and color
+			if (($subfield300b =~ /b.?\&.?w/) && ($subfield300b =~ /col\./)) {
+				$col_and_bw = 1;
+			} #if col. and b&w 
+			#both but col. missing period
+			elsif (($subfield300b =~ /b.?\&.?w/) && ($subfield300b =~ /col[^.]/)) {
+				$col_and_bw = 1;
+				push @warningstoreturn, join ('', "$controlno\t", "300: Col. may need a period, $subfield300b.");
+			} #elsif b&w and col (without period after col.)
+			elsif (($subfield300b =~ /b.?\&.?w/) && ($subfield300b !~ /col\./)) {
+				$bw_only = 1;
+			} #if b&w only
+			elsif (($subfield300b =~ /col\./) && ($subfield300b !~ /b.?\&.?w/)) {
+				$col_only = 1;
+			} #if col. only
+			elsif (($subfield300b =~ /col[^.]/) && ($subfield300b !~ /b.?\&.?w/)) {
+				$col_only = 1;
+				push @warningstoreturn, join ('', "$controlno\t", "300: Col. may need a period, $subfield300b.");
+			} #if col. only (without period after col.)
+			else {
+				push @warningstoreturn, join ('', "$controlno\t", "300: Col. or b&w are not indicated, $subfield300b.");
+			} #not indicated
+		} #if subfieldb exists
+		###########################
+
+		#### get dimensions ####
+		if ($subfield300c) {
+			if ($subfield300c =~ /4 3\/4 in\./) {
+				$dim300 = '4.75';
+			} #4 3/4 in.
+			elsif ($subfield300c =~ /1\/2 in\./) {
+				$dim300 = '.5';
+			} #1/2 in.
+		#### add other dimensions here ####
+		###########################
+		### elsif ($subfield300c =~ //) {}
+		###########################
+		###########################
+			else {
+				push @warningstoreturn, join ('', "$controlno\t", "300: Dimensions are not 4 3/4 in. or 1/2 in., $subfield300c.");
+			} # not normal dimension
+		} #if subfieldc exists
+		###########################
+
+####################################
+##### Compare SMD vs. dimensions ###
+####################################
+#$viddiscin300, $vidcassettein300
+#$dim300
+##### modify unless statement if dimensions change
+		if ($viddiscin300) {
+			push @warningstoreturn, join ('', "$controlno\t", "300: Dimensions, $subfield300c, do not match SMD, $subfield300a.") unless ($dim300 eq '4.75');
+		}
+		elsif ($vidcassettein300) {
+			push @warningstoreturn, join ('', "$controlno\t", "300: Dimensions, $subfield300c, do not match SMD, $subfield300a.") unless ($dim300 eq '.5');
+		}
+####################################
+
+###########################
+####### Get 538s ##########
+###########################
+
+		my @fields538 = $record->field('538')->as_string() if ($record->field('538'));
+		#report nonexistent 538 field
+		unless (@fields538){
+				push @warningstoreturn, join ('', "$controlno\t", "538: May be missing in video record.");
+		} #unless 538 field exists
+		else {
+			foreach my $field538 (@fields538) {
+				if ($field538 =~ /(DVD)|(Video CD)/) {
+					$dvd538 = 1;
+				} #if dvd in 538
+				#################################
+				###### VHS wording in 538 is subject to change, so make note of changes
+				#################################
+				#538 should have VHS format and a playback mode (for QBI's current records)
+				elsif ($field538 =~ /VHS ([hH]i-[fF]i)?( mono\.)? ?format, [ES]?L?P playback mode/) {
+					$vhs538 = 1;
+				} #elsif vhs in 538
+				###
+				### Add other formats here ###
+				###
+				else {
+					#current 538 doesn't have DVD or VHS
+					$notdvd_or_vhs_in538 = 1;
+				} #else 
+			} #foreach 538 field
+		} # #else 538 exists
+
+		## add other formats as first condition if necessary
+		if (($vhs538||$dvd538) && ($notdvd_or_vhs_in538 == 1)) {
+		$notdvd_or_vhs_in538 = 0;
+		} #at least one 538 had VHS or DVD
+
+# if $notdvd_or_vhs_in538 is 1, then no 538 had VHS or DVD
+		elsif ($notdvd_or_vhs_in538 ==1) {
+			push @warningstoreturn, join ('', "$controlno\t", "538: Does not indicate VHS or DVD.");
+		} #elsif 538 does not have VHS or DVD
+
+###################################
+##### Cross field comparisons #####
+###################################
+
+		#compare SMD in 300 vs. 007 and 538
+		##for cassettes
+		if ($iscassette007) {
+			push @warningstoreturn, join ('', "$controlno\t", "300: 007 coded for cassette but videocassette is not present in 300a.") unless ($vidcassettein300);
+			push @warningstoreturn, join ('', "$controlno\t", "538: 007 coded for cassette but 538 does not have 'VHS'.") unless ($vhs538);
+		} #if coded cassette in 007
+		##for discs
+		elsif ($isdisc007) {
+			push @warningstoreturn, join ('', "$controlno\t", "300: 007 coded for disc but videodisc is not present in 300a.") unless ($viddiscin300);
+			push @warningstoreturn, join ('', "$controlno\t", "538: 007 coded for disc but 538 does not have 'DVD'.") unless ($dvd538);
+		} #elsif coded disc in 007
+
+###$bw_only, $col_only, $col_and_bw
+
+		#compare 007/03 vs. 300$b for color/b&w
+		if ($field007bytes[3] eq 'b') {
+			push @warningstoreturn, join ('', "$controlno\t", "300: Color in 007 coded 'b' but 300b mentions col., $subfield300b") unless ($bw_only);
+		} #b&w
+		elsif ($field007bytes[3] eq 'c') {
+			push @warningstoreturn, join ('', "$controlno\t", "300: Color in 007 coded 'c' but 300b mentions b\&w, $subfield300b") unless ($col_only);
+		} #col.
+		elsif ($field007bytes[3] eq 'm') {
+			push @warningstoreturn, join ('', "$controlno\t", "300: Color in 007 coded 'm' but 300b mentions only col. or b\&w, $subfield300b") unless ($col_and_bw);
+		} #mixed
+		elsif ($field007bytes[3] eq 'a') {
+			#not really an error, but likely rare, especially for QBI videos
+			push @warningstoreturn, join ('', "$controlno\t", "300: Color in 007 coded 'a', one color.");
+		} #one col.
+
+
+	} # else have exactly 1 'v' 007
+
+} # while
+
+print OUT join "\n", @warningstoreturn;
+print scalar @warningstoreturn, " errors found\n$runningrecordcount records scanned.\n";
+close $inputfile;
+close OUT;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+print "\n\nPress Enter to quit";
+<>;
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

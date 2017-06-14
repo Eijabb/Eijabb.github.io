@@ -1,0 +1,194 @@
+#!perl
+
+=head2
+
+Compares two lists, which are compiled from a file of lines.
+Each line is put in an array slot. 
+Each item in one array is compared with each item in the second.
+Prints out items that are not in one list or the other (separately).
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::BBMARC;
+use List::Compare;
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to list comparison\n");
+
+##### File handling initialization ######
+#prompt for input file
+print ("What is the first file (list1)? ");
+my $file1=<>;
+chomp $file1;
+$file1 =~ s/^\"(.*)\"$/$1/;
+open(IN1, "<$file1");
+
+print ("What is the second file (list2)? ");
+my $file2 = <>;
+chomp $file2;
+$file2 =~ s/^\"(.*)\"$/$1/;
+open(IN2, "<$file2");
+
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile");
+
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+#### put lines from first file in array #####
+my @list1 = ();
+while (my $line = <IN1>) {
+chomp $line;
+push @list1, ($line);
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} # while
+
+my @list2 = ();
+while (my $line = <IN2>) {
+chomp $line;
+push @list2, ($line);
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} # while
+
+
+########## Start comparison #########
+
+my $lc = List::Compare->new(\@list1, \@list2);
+
+#present in first file but not in second
+my @list1only = $lc->get_unique;
+
+#present in second file but not in first
+my @list2only = $lc->get_complement;
+
+#in one file or the other but not both
+my @LorRonly = $lc->get_symmetric_difference;
+
+#print the results
+print OUT "The following were in $file1 only:\n";
+print OUT join "\n", @list1only, "\n";
+
+print OUT "\n", "-"x20;
+print OUT "The following were in $file2 only:\n";
+print OUT join "\n", @list2only, "\n";
+
+print OUT "\n", "-"x20;
+print OUT "The following were in $file1 or $file2 but not both:\n";
+print OUT join "\n", @LorRonly, "\n";
+
+print "Counts, list1 only: ", scalar @list1only, "\nlist2only: ", scalar @list2only, "\none or the other: ", scalar @LorRonly, "\n";
+
+print OUT "\n", "-"x20;
+
+#######################
+#look for duplicate records in file1
+print OUT "Duplicates in $file1:\n";
+map {$_ =~ s/\s//g} @list1;
+my %counts;
+foreach my $list1item (@list1) {
+$counts{$list1item}++;
+}
+foreach my $key (sort keys %counts) {
+if ($counts{$key} > 1) {print OUT "$key\n";}
+}
+
+print OUT "\n", "-"x20;
+#######################
+#look for duplicate records in file2
+print OUT "Duplicates in $file2:\n";
+map {$_ =~ s/\s//g} @list2;
+my %counts;
+foreach my $list2item (@list2) {
+$counts{$list2item}++;
+}
+foreach my $key (sort keys %counts) {
+if ($counts{$key} > 1) {print OUT "$key\n";}
+}
+
+print OUT "\n", "-"x20;
+
+close $file1;
+close $file2;
+
+close OUT;
+
+
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+print "\n\nPress Enter to quit";
+<>;
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

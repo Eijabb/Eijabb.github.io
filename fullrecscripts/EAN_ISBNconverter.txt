@@ -1,0 +1,127 @@
+#!perl
+
+=head2
+
+Reads from the command prompt EANs (13 digit ISBNs) and outputs to the screen ISBNs (10 digit).
+
+Also validates ISBNs and reports those with incorrect checksums.
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use warnings;
+use MARC::BBMARC;
+use Business::ISBN;
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to ISBN-EAN converter script\n");
+
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+my $outputlinecount = 0;
+print "Please enter 13 digit EAN or ISBN (or q to quit): ";
+#### Start while loop through records in file #####
+while (my $line = <>) {
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+	
+	chomp $line;
+	last if ($line =~ /^q/);
+	#remove all non-digit (or X) characters from line
+	$line =~ s/[^0-9xX]//g;
+	
+	#skip lines with no ISBN/EAN number
+	if ($line =~ /^\d{9}[\dX]$/) {
+		my $is_valid = Business::ISBN::is_valid_checksum($line);
+		if ($is_valid == 1) {
+		print $line, " is valid\n";
+		} #valid
+		else {
+		print $line, " has bad checksum\n";
+		} #not valid
+		$outputlinecount++;
+	} #line is 10 digits
+	#unless line has ISBN already or is a non-digit line, convert ean to isbn
+	elsif ($line =~ /^\d{12}[\dX]$/) {
+		my $isbn = Business::ISBN::ean_to_isbn($line);
+		if ($isbn) {
+			print $isbn, " is the 10-digit ISBN\n";
+			my $good_ean = Business::ISBN::isbn_to_ean($isbn);
+			if ($good_ean) {
+				print $good_ean, " is the correct 13-digit for this ISBN\n";
+			} #if good ean was found
+			else {
+				print "Failed to find EAN for that supposedly valid ISBN\n";
+			} #something went wrong--what?
+		} #isbn defined
+		else {
+			print $line, " is not a valid ean string\n";
+		} #invalid 13 digit
+		$outputlinecount++;
+	}
+	else {print "$line is an exception (not 10 or 13 digits)\n";}
+	print "Please enter 13 digit EAN or ISBN (or q to quit): ";
+} # while
+
+
+print "$outputlinecount lines output\n$runningrecordcount lines scanned\n";
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

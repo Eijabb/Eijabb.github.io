@@ -1,0 +1,229 @@
+#!perl
+
+=head2 NAME
+Extract Nonbook by 008 date
+
+=head2 DESCRIPTION
+
+Extracts all nonbook records (those without 'a' in LDR/06) between two dates, based on 008 creation dates (008/0-5)
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+use MARC::BBMARC;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Count records\n");
+
+##### File handling initialization ######
+#prompt for updated file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile") or die "can not open exportfile\n";
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+#get early date
+my $earlydate;
+
+print ("What is the earliest create date desired (008 date, in yymmdd)? ");
+
+
+while (my $date = <>) {
+chomp $date;
+my $field008 = $date;
+my $yyyymmdderr = MARC::BBMARC::parse008date($field008);
+my @parsed008date = split "\t", $yyyymmdderr;
+my $earlyyear = shift @parsed008date;
+my $earlymonth = shift @parsed008date;
+my $earlyday = shift @parsed008date;
+my $errors = join "\t", @parsed008date;
+
+if ($errors) {
+ if ($errors =~ /is too short/) {
+print "Please enter a longer date, $errors\nEnter date (yymmdd): " ;
+}
+else {print "$errors\nEnter valid date (yymmdd): ";}
+} #if errors
+#otherwise have valid date so put it together
+else {
+$earlydate = $earlyyear.$earlymonth.$earlyday;
+last;}
+}
+
+#get ending date
+my $endingdate;
+print ("What is the ending create date desired (008 date, in yymmdd)? ");
+
+while (my $date = <>) {
+chomp $date;
+my $field008 = $date;
+my $yyyymmdderr = MARC::BBMARC::parse008date($field008);
+my @parsed008date = split "\t", $yyyymmdderr;
+my $endingyear = shift @parsed008date;
+my $endingmonth = shift @parsed008date;
+my $endingday = shift @parsed008date;
+my $errors = join "\t", @parsed008date;
+
+if ($errors) {
+ if ($errors =~ /is too short/) {
+print "Please enter a longer date, $errors\nEnter date (yymmdd): " ;
+}
+else {print "$errors\nEnter valid date (yymmdd): ";}
+} #if errors
+else {
+$endingdate = $endingyear.$endingmonth.$endingday;
+last;}
+}
+
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+my $recordcount = 0;
+#### Start while loop through records in file #####
+
+while (my $record = $batch->next()) {
+
+my $leader = $record->leader();
+my $controlno = $record->field('001')->as_string();
+my $mattype = substr($leader, 6, 1); 
+my $encodelvl = substr($leader, 17, 1);
+my $field008 = $record->field('008')->as_string();
+
+#parse created date
+my $datecreated = MARC::BBMARC::parse008date($field008);
+my @parsed008date = split "\t", $datecreated;
+my $yearentered = shift @parsed008date;
+my $monthentered = shift @parsed008date;
+my $dayentered = shift @parsed008date;
+my $errors = join "\t", @parsed008date;
+#report create date errors
+if ($errors) {print "$controlno\t$errors\n";}
+my $dateentered = $yearentered.$monthentered.$dayentered unless ($errors);
+
+
+#skip records not coded Full-level
+if (($encodelvl !~ /\s/)){
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+next;}
+
+#skip book records
+if ($mattype eq 'a'){
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+next;}
+
+#make sure dates have been obtained
+if (($dateentered && $earlydate && $endingdate))
+{
+#skip records outside date range (created before $earlydate or after $endingdate)
+if (($dateentered < $earlydate) ||
+  ($dateentered > $endingdate))
+ {
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+next;
+}
+#print out the remaining records
+else {
+print OUT $record->as_usmarc();
+$recordcount++
+} #record is full, not 'a', and is in the date ranges
+
+} #if all three dates existed
+#account for problem dates
+else {print "$dateentered is dateentered, $earlydate is earlydate, $endingdate is endingdate.\nOne of the above may have problems or is missing?\n"}
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+
+} # while
+
+
+close $inputfile;
+
+
+close OUT;
+
+print "$recordcount full, nonbook records output within the dates given\n";
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+print "\n";
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+print "Press Enter to continue";
+<>;
+
+#####################
+### END OF PROGRAM ##
+#####################
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

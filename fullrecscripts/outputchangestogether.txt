@@ -1,0 +1,413 @@
+#!perl
+
+=head2
+
+Order for comparison with updated_rec_hash
+
+Uses new MARC::BBMARC::updated_record_hash() subroutine to match control number in updated file (1st file) with control number in base file (2nd file) and outputs the two as raw MARC, one right after the other.
+
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+use MARC::BBMARC;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to order record comparison\n");
+##### File handling initialization ######
+#prompt for updated file, used for outputing raw
+print ("What is the updated file (newest records)?:");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+
+#associate control number of updated record with its raw MARC
+my $updrechashref = MARC::BBMARC::updated_record_hash($inputfile);
+my %updhash = %$updrechashref;
+$updrechashref = undef;
+
+#read command line for name of base file
+print ("Base record file:");
+my $basefile=<>;
+chomp $basefile;
+$basefile =~ s/^\"(.*)\"$/$1/;
+my $batch = MARC::Batch->new('USMARC', "$basefile");
+
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile");
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+my $outcount = 0;
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+#get control no of baserecord
+my $basecontrolno = $record->field('001')->as_string();
+
+#look for $basecontrolno in updated file
+if ($updhash{$basecontrolno}) {
+print OUT ($updhash{$basecontrolno}, $record->as_usmarc());
+$outcount++
+}
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} # while
+
+close $inputfile;
+close $basefile;
+close OUT;
+
+print "$outcount records output\n";
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+print "\n";
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+print "Press Enter to continue";
+<>;
+
+#####################
+### END OF PROGRAM ##
+#####################
+#!perl
+
+=head2 Description
+
+Counts records and outputs counts by record type
+(nonbook (all but 'a', 'e', or 'o'), book, 
+LCCIP upgrade, PCIP, and original/PCIP-upgrade.)
+
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+use MARC::BBMARC;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Count records\n");
+
+##### File handling initialization ######
+#prompt for updated file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile") or die "can not open exportfile\n";
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+#count all types
+my %mattypecounts = (
+a => 0,
+c => 0,
+e => 0,
+g => 0,
+i => 0,
+j => 0,
+m => 0,
+o => 0
+);
+
+#count only those with 008/0-5 dates > 2000
+my %mattypecounts2 = (
+a => 0,
+c => 0,
+e => 0,
+g => 0,
+i => 0,
+j => 0,
+m => 0,
+o => 0
+);
+
+#count only those with 008/0-5 date > 2003
+my %mattypecounts3 = (
+a => 0,
+c => 0,
+e => 0,
+g => 0,
+i => 0,
+j => 0,
+m => 0,
+o => 0
+);
+
+#count types without DLC in 040 all
+my %nonDLCcounts = (
+a => 0,
+c => 0,
+e => 0,
+g => 0,
+i => 0,
+j => 0,
+m => 0,
+o => 0
+);
+
+#count nonDLC created after 2000
+my %nonDLCcounts2 = (
+a => 0,
+c => 0,
+e => 0,
+g => 0,
+i => 0,
+j => 0,
+m => 0,
+o => 0
+);
+
+#count nonDLC created after 2003
+my %nonDLCcounts3 = (
+a => 0,
+c => 0,
+e => 0,
+g => 0,
+i => 0,
+j => 0,
+m => 0,
+o => 0
+);
+
+
+#count number of CIP coded
+my $cipcodecount = 0;
+
+#### Start while loop through records in file #####
+
+while (my $record = $batch->next()) {
+
+my $leader = $record->leader();
+my $controlno = $record->field('001')->as_string();
+my $mattype = substr($leader, 6, 1); 
+my $encodelvl = substr($leader, 17, 1);
+my $field008 = $record->field('008')->as_string();
+#parse first part of 008 field for created date and pub or copyright date
+my %field008hash = (
+dateentered => substr($field008,0,6),
+date1 => substr($field008,7,4), 
+);
+#get year record was created
+my $yearcreated = substr($field008, 0, 2);
+#turn created year into 4 digit year
+if ($yearcreated > 80) {$yearcreated += 1900;}
+elsif ($yearcreated < 6) {$yearcreated += 2000;}
+else {print "$yearcreated is invalid or early in $controlno\n";}
+#get 040 field to check for presence of 'DLC'
+my $field040;
+if ($record->field('040')) {
+$field040 = $record->field('040')->as_string();
+}
+else {$field040 = 'IOrQBI';}
+
+#count the material type for comprehensive total
+$mattypecounts{$mattype}++;
+
+#if encoding level is not full, do something
+if ($encodelvl !~ /\s/) {
+#check if encoding is 8 for CIP, if so count it
+if ($encodelvl eq '8') {$cipcodecount++;}
+#if not, need to correct
+else {print "$controlno\tis not full or 8\n";}
+}
+
+#Count only full level recs so go to next if not coded as full
+if (($encodelvl !~ /\s/)){
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+next;}
+
+
+#Count records created after 2000
+if ($yearcreated >= 2000) {
+$mattypecounts2{$mattype}++;
+}
+
+#Count records created after 2003
+if ($yearcreated >= 2003) {
+$mattypecounts3{$mattype}++;
+}
+
+#Count all nonDLC records 
+if (($field040 !~ /DLC/)) {
+$nonDLCcounts{$mattype}++;
+}
+
+#Count nonDLC records created after 2000
+if (($field040 !~ /DLC/) && ($yearcreated >= 2000)) {
+$nonDLCcounts2{$mattype}++;
+}
+
+#Count nonDLC records created after 2003
+if (($field040 !~ /DLC/) && ($yearcreated >= 2003)) {
+$nonDLCcounts3{$mattype}++;
+}
+
+
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+
+} # while
+
+
+close $inputfile;
+
+#print the results to OUT file
+
+print OUT "$runningrecordcount recs scanned\n";
+print OUT "\n$cipcodecount records coded as CIP\n\n";
+
+print OUT "Total counts for each material type in file:\n";
+foreach my $mattypecode (sort keys %mattypecounts) {
+print OUT "$mattypecode is in $mattypecounts{$mattypecode} records\n";
+}
+
+#Date after 2000
+print OUT "\n\nCounts for each material type for all records created after 2000:\n";
+foreach my $mattypecode (sort keys %mattypecounts2) {
+print OUT "$mattypecode is in $mattypecounts2{$mattypecode} records\n";
+}
+
+#Date after 2003
+print OUT "\n\nCounts for each material type for all records created after 2003:\n";
+foreach my $mattypecode (sort keys %mattypecounts3) {
+print OUT "$mattypecode is in $mattypecounts3{$mattypecode} records\n";
+}
+#NonDLC total
+
+print OUT "\n\nCounts for each material type for Non-DLC records:\n";
+foreach my $mattypecode (sort keys %nonDLCcounts) {
+print OUT "$mattypecode is in $nonDLCcounts{$mattypecode} records\n";
+}
+
+#NonDLC after 2000
+print OUT "\n\nCounts for each material type for Non-DLC records created after 2000:\n";
+foreach my $mattypecode (sort keys %nonDLCcounts2) {
+print OUT "$mattypecode is in $nonDLCcounts2{$mattypecode} records\n";
+}
+
+#NonDLC after 2003
+print OUT "\n\nCounts for each material type for Non-DLC records created after 2003:\n";
+foreach my $mattypecode (sort keys %nonDLCcounts3) {
+print OUT "$mattypecode is in $nonDLCcounts3{$mattypecode} records\n";
+}
+
+close OUT;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+print "\n";
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+print "Press Enter to continue";
+<>;
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

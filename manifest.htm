@@ -1,0 +1,160 @@
+<html>
+
+	<head>
+		<meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+		<title>Bryan's MARC Perl scripts manifest</title>
+	</head>
+
+	<body bgcolor="white">
+		<font size="5">Manifest/description of some of the files on this site</font>
+		<p>
+		<hr>
+		</p>
+		<p><b>Required (used) modules for most of these scripts/programs<br>
+		</b></p>
+		<p><a href="http://marcpm.sourceforge.net">MARC::Record</a> and its associated modules.</p>
+		<p>Time::HiRes</p>
+		<p><a href="bryanmodules/MARC-BBMARC-1.08/BBMARC.pm.txt">MARC::BBMARC</a> (available on this site--if the link doesn't work, try browsing in /bryanmodules/ for the latest version)</p>
+		<p>For MARC::Lintadditions, Business::ISBN and Business::ISSN (from CPAN) are required (used).</p>
+		<p>Some scripts also require List::Compare (from CPAN).</p>
+		<p>Some scripts also use my MARC::QBI::Misc module for file handling. This is not yet available on my site. I am considering moving the file handling code to MARC::BBMARC, but haven't gotten around to it yet.</p>
+		<p>Extensions on files are either .txt, .pl/.pm, or a combination of the two.<br>
+		All are plain text, most are .pls (except BBMARC.pm, Lintadditions.pm, and Errorchecks.pm), and end with .txt so that they can be saved/downloaded.</p>
+		<p>File names may not match the names listed here, but they should be close.<br>
+		Not all files are covered here, and the individual files have better descriptions.<br>
+		See also the <a href="index.htm">index.htm</a> list of Changes.</p>
+		<p>
+		<hr>
+		</p>
+		<p><b>/<a href="bryanmodules/">bryanmodules/</a>*.*</b></p>
+		<p>MARC::BBMARC -- module containing various subroutines that I have found useful.</p>
+		<p>MARC::Lintadditions -- module containing additional check_XXX functions for MARC::Lint of the MARC::Record distribution (see <a href="http://marcpm.sourceforge.net/">http://marcpm.sourceforge.net/</a> for more information).</p>
+		<p>MARC::Errorchecks -- module containing additional MARC record validation checks not easily performed in MARC::Lint and MARC::Lintadditions.</p>
+		<p>MARC::Lint::CodeData -- module containing MARC Code List data for Languages, Countries, and Geographic Areas. Used by checks in Lintadditions and Errorchecks.</p>
+		<p>There are tar.gz files for each of these.</p>
+		<p>
+		<hr>
+		</p>
+		<p>At same level as index.htm:<br>
+		Template for reading records: marcreadingstarttemplate.txt</p>
+		<p>
+		<hr>
+		</p>
+		<p><b>/<a href="fullrecscripts/">fullrecscripts/</a>*.*</b></p>
+		<p><a href="fullrecscripts/Cleanup_full_recs/">Cleanup full recs</a></p>
+		<ul>
+			<li>003cleanupscript.txt--Matches 001 with 003 and fixes mismatches. Reports errors for unmatched records.
+			<li>007cleanupscript.txt--The 007cleanupscript produces cleaned records and records for manual inspection while validating 007 bytes.
+			<li>010cleanupscript.txt--Fixes spacing in 010 subfield 'a'
+			<li>cleantrailingspaces.txt--Removes spaces at the end of fields greater than 010, skipping 016 fields as well.
+			<li>008langblanktozxx.txt--Converts 008/35-37 from 3 blank spaces to zxx.
+			<li>440to490-830.txt--Converts 440 to 490-830 pairs.
+
+		</ul>
+		<p><a href="fullrecscripts/Code_list_cleanup/">Code list cleanup</a></p>
+		<ul>
+			<li>countrycodelistclean.txt--Used to create the DATA for country code validation. Requires the ASCII version of the <a href="http://www.loc.gov/marc/countries/cou_ascii.html">MARC Code List for Countries</a>.
+			<li>gaccleanupscript.txt--Used to create the DATA for geographic area code validation. Requires the ASCII version of the <a href="http://www.loc.gov/marc/geoareas/gacascii.html">MARC Geographic Areas Codes</a>.
+			<li>languagecodelistclean.txt--Used to create the DATA for geographic area code validation. Requires the ASCII version of the <a href="http://www.loc.gov/marc/languages/langascii.html">MARC Language Codes</a>.
+		</ul>
+		<p><a href="fullrecscripts/Counting/">Counting</a></p>
+		<ul>
+			<li>comparemerge.txt (Compare merge)--Tells how many records would be updated and how many records are in a file (code based on mermarcfiles.pl and hasbeenupdated.pl (below)).
+			<li>countrecords.txt--Reports number of records in a file of MARC records.
+			<li>countrecsbytype.txt--Counts records and outputs counts by record type (nonbook (all but 'a', 'e', or 'o'), book, LCCIP upgrade, PCIP, and original/PCIP-upgrade.)
+			<li>errreptcount.txt--Takes the result of lintallchecks.pl, removes control number and title from start of line, outputs (2 files) with each error on a line with the count of occurances for that error.
+			<li>fieldsubfieldcounts.txt--Report totals for each tag and subfield for a file of records. Currently limited to field/tag count.
+		</ul>
+		<p><b>deleteSHandDDC.txt</b>--Script for removing designated subject headings and Dewey numbers. Relies upon MARC::QBI::Misc for file handling and prompting.</p>
+		<p><b>EAN_ISBNconverter.txt</b>--Reads from the command prompt EANs (13 digit ISBNs) and outputs to the screen ISBNs (10 digit).</p>
+		<p><a href="fullrecscripts/Extraction/">Extraction</a></p>
+		<p>The field extraction scripts are essentially the same, with minor modifications.</p>
+		<ul>
+			<li><b>extractbycontrolno.txt</b>--Given a file of control numbers, extracts records with those numbers from a file of MARC records.
+			<li>extractbycontrolnoignrspace.txt--Same as Extract by Control Number, but ignores leading or trailing spaces in the numbers.
+			<li><b>extractbyisbn.txt</b>--Given a file of ISBNs (tab separated), and a file of MARC records, exports any MARC records with one of the matching ISBNs (020a or 020z). Also exports a separate file of non-matches (for additional searching or dealing with).
+			<li>extractbystockorisbn.txt--Similar to extractbyisbn.pl.txt, but takes file of stock numbers (for 037 field) and ISBNs, tab separated..
+			<li>extracterrorsfrommodules.txt--Outputs POD info, comments, and lines with an error or warning statement from a module/script.
+			<li>extractnonbookby008date.txt--Extracts all nonbook records (those without 'a' in LDR/06) between two dates, based on 008 creation dates (008/0-5).
+			<li>extractpcip.txt--Extracts records coded as CIP-level (LDR/17 eq '8')
+			<li><b>extractspecsubfield.txt</b>--Extract Specific Subfield is based on Field Extraction and prompts for a subfield to extract after the field and indicator prompts.
+			<li><b>fieldextraction.txt</b>--Generalized version, allowing the user to select the field number to extract, and desired indicators for that field.
+			<li>fieldextractionwithregex.txt--Preliminary version of a script to extract fields by keyword. This version requires the programmer to hard code the regex. Future versions should allow users to input search terms/regexes..
+			<li>fieldextraction3.txt--Field Extraction 3 is a more basic (earlier) version of the first, and was limited to fields with indicators and second indicator of '0'.
+			<li>fieldextractioncleanspaces.txt
+			<li>fieldextractionnocontrols.txt--Field Extraction No Controls differs from Field Extractiononly in that it doesn't output the control numbers it has stored for each extracted field.
+		</ul>
+		<p>findmultiplefields.txt--Scans through a file of records and outputs control number of records having multiple occurances of a specified field.</p>
+		<p>hasbeenupdated.txt (Has been updated?)--Compares two files, and outputs list of those that have been updated.</p>
+		<p><a href="fullrecscripts/Linting/">Linting</a></p>
+		<ul>
+			<li><b>lintallchecks.txt</b>--Incorporates all checks in MARC::Lint, MARC::Lintadditions, and MARC::Errorchecks.
+			<li>lintcheck2.txt--Older version of lintallchecks.pl
+			<li>linttest.txt--Older version of lintallchecks.pl
+			<li>lintwithadditions.txt--Older version of lintallchecks.pl (added Lintadditions to Lint checking)
+			<li>lintwithadditionsselective.txt--Used to test individual MARC::Lintadditions methods (to turn checks on and off as needed).
+		</ul>
+		<p><b>mermarcfiles.txt</b> (Merge MARC files)--Merges two files of MARC records into one, and removes any records with a control number matching one in a file of Deleted control numbers. The updated records are tacked on to the end of the base record file.</p>
+		<p><b>outputchangestogether.txt--</b>Uses MARC::BBMARC::updated_record_hash() subroutine to match control number in updated file (1st file) with control number in base file (2nd file) and outputs the two as raw MARC, one right after the other.</p>
+		<p><b>printrecordasformatted.txt</b>--Uses MARC::BBMARC's functions to output each field of a record in human readable form, with tabs separating each subfield, and @ as subfield indicator. This will need to be modified to work on other systems, as it uses MARC::QBI::Misc for file handling.</p>
+		<p><b>rawanddecodedscan.txt</b>--Relies upon warnings generated in MARC::File::USMARC when decoding a record to take note of invalid indicators. Reports when indicators have been forced to blanks so that those records can be corrected without losing the indicators.</p>
+		<p><b>splitmarcfile.pl.txt</b>--Splits a file of MARC records into multiple files, based on a specified (hard-coded presently) number of records.</p>
+		<p><a href="fullrecscripts/Tests_for_Errorchecks/">Tests for Errorchecks</a></p>
+		<p>Most of these are previous versions/script versions of the subroutines in MARC::Errorchecks.</p>
+		<ul>
+			<li>008checker.txt--Identifies records with bad bytes in the 008 (Likely to fail, since it refers to MARC::BBMARC::validate008 instead of MARC::Errorchecks::validate008).
+			<li>008illvs300.txt
+			<li>008matchvsotherfields.txt
+			<li>checkcipforstockno.txt
+			<li><b>Errorchecks.t.txt-</b>-Test script for the MARC::Errorchecks distribution (in progress).
+			<li>findemptysubfields.txt
+			<li>findlongrecords.txt
+			<li>findmultiperiodsafter010.txt
+			<li>findmultiplefields.txt
+			<li>findmultispacesafter010.txt
+			<li>findunderscoredollarinfield.txt
+			<li>ldrvalidatescript.txt
+			<li>pubdatecomparisons.txt
+			<li>testgetdate.txt
+			<li>testnewerrorchecks.txt--Allows individual subroutines to be turned on and off more easily than in lintallchecks<br>
+			(using commenting/uncommenting of subroutine calls).
+			<li>viddvdvsvhs.txt
+		</ul>
+		<p><a href="fullrecscripts/Tests for Lintadditions/">Tests for Lintadditions</a></p>
+		<p>Most of these are previous versions/script versions of the subroutines in MARC::Lintadditions.</p>
+		<ul>
+			<li>check022script.txt
+			<li>isbnvalidatescript.txt
+			<li>lintwithadditionsselective.txt
+			<li>validate007.t.txt
+		</ul>
+		<p>
+		<hr>
+		</p>
+		<p><b>/<a href="cleanupscripts/">cleanupscripts/</a>*.*</b></p>
+		<p>Various scripts to clean output of fieldextraction.txt or other scripts.<br>
+		See individual files for description of each.</p>
+		<p>Template for cleanupscripts: findregexinfieldextract.pl.txt</p>
+		<p>
+		<hr>
+		</p>
+		<p>/<a href="inprocess/">inprocess</a>/*.*</p>
+		<p>LCSHchangesparserpl.txt</p>
+		<p>Finds changed LCSH in the LCSH weekly lists. Outputs Tag [tab] Old heading [tab] New heading.<br>
+		This is not yet working properly, but it does create a file of changed headings for each week, given a folder containing weekly lists. Actual file name will contain the version number.<br>
+		It also compiles a single file of all changes in the specified folder's files.</p>
+		<p>/marc-marcmaker0.02/*.*</p>
+		<p>Preliminary working version of MARC::File::MARCMaker, a module based on MARC::File::USMARC and ::MicroLIF, using code from the MARC.pm module. Once done, the module will allow one to work with MARCMaker format files.</p>
+		<p></p>
+		<p>
+		<hr>
+		</p>
+		<p>COPYRIGHT AND LICENSE</p>
+		<p>This software is free software and may be distributed under the same terms as Perl itself.</p>
+		<p>Copyright (C) 2003-2005<br>
+		Bryan Baldus<br>
+		eijabb@cpan.org</p>
+		<p>Last updated July 16, 2005.
+	</body>
+
+</html>

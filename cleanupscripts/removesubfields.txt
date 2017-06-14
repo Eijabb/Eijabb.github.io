@@ -1,0 +1,91 @@
+#!perl
+
+=head2
+
+
+Remove removes all subfields after the first.
+Asks if user wants to keep control numbers
+(make sure original file has control numbers separated by 2 tabs).
+
+Use with identifymiscodings.pl,
+For example, to create base file to compare 650 vs. 651 extracts.
+
+To do: output controls if desired.
+Currently prints out only headings, one per line.
+
+
+=cut 
+
+print "Input file: ";
+$inputfile = <>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print "Export file: ";
+$exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+
+open (IN, "<$inputfile") || die ("can't open in");
+
+open (OUT, ">$exportfile") || die ("can't open out");
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+
+my $linecount = 0;
+my %firstsubfield;
+
+while (my $line = <IN>) {
+chomp $line;
+#remove extra spaces between tabs
+$line =~ s/\t\s{7}\@/\t\@/g;
+#remove count, tag, indicators, and first subfield code and char
+$line =~ s/^\d+?\t\d{3}\s[ \d][ \d]\s\@\w\t//;
+#split control nos from heading
+my @linearray = split ("\t\t", $line);
+my @headingarray = split ("\t", $linearray[0]);
+#would split each control number into its own spot in array
+#my @controlnoarray = split ("\t", $linearray[1]);
+my $heading = $headingarray[0];
+
+my $controlarrayref = \@{$firstsubfield{$heading}->{control}};
+push (@{$controlarrayref}, ($linearray[1]));
+
+#print OUT "$linearray[0]\n";
+$linecount++;
+
+}
+
+my @headings = sort keys %firstsubfield;
+
+
+# Print out the results
+for my $heading ( @headings ) {
+print OUT ("$heading\n");
+}
+
+close IN;
+
+close OUT;
+print "$linecount lines identified\n";
+print "Press Enter to quit";
+<>;
+
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

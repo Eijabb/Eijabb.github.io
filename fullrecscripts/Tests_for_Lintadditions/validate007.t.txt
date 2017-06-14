@@ -1,0 +1,87 @@
+#!perl -Tw
+
+=head2 NAME
+
+validate007.t -- Test validate007 sub through MARC::Lintadditions::check_007.
+
+=cut
+
+use strict;
+use Test::More tests=>15;
+
+BEGIN { use_ok( 'MARC::Record' ); }
+BEGIN { use_ok( 'MARC::Lintadditions' ); }
+
+my $badbytecount = 0;
+my $visualizecount = 0;
+my $currentfieldcount = 0;
+
+my $lint007 = MARC::Lintadditions->new();
+
+isa_ok( $lint007, 'MARC::Lintadditions');
+
+my @fields007 = (
+	'ad canzn',
+	'ad canzn ',
+	'ad canzn a',
+	'vf mbahou',
+	'vf mbahou ',
+	'vf mbahou a',
+	'vv mbahou',
+	'vi8slsaus',
+	'aducznzn',
+#	'adzdunza',
+#	'ai ieowq',
+#	'ad canzn ',
+#	'ad canznz',
+#	'vf mbahou',
+#	'vf ivdiao',
+#	'vd cvaizu',
+#	'vd cvaizu ',
+#	'vd cvaizu a',
+#	'vi8wiqpas',
+	);
+
+my @expected = (
+	q{007: ad canzn  does not match ad canzn},
+	q{007: 007 has data after limit},
+	q{007: vf mbahou  does not match vf mbahou},
+	q{007: 007 has data after limit},
+#	q{007: v8 mbahou does not match v_ mbahou},
+	q{007: byte 1 (v) is invalid},
+	q{007: byte 1 (i) is invalid},
+	q{007: byte 2 (8) is invalid},
+	q{007: byte 3 (s) is invalid},
+	q{007: byte 4 (l) is invalid},
+	q{007: byte 5 (s) is invalid},
+	q{007: aducznzn does not match ad cznzn},
+#	q{},
+);
+
+
+foreach my $field007string (@fields007) {
+
+	my $field007 = MARC::Field->new('007', $field007string);
+
+#	isa_ok($field007, 'MARC::Field');
+
+	$lint007->MARC::Lintadditions::check_007($field007);
+
+	$currentfieldcount++;
+	my $fielddata = $field007->as_string();
+	my @warnings = $lint007->warnings;
+	while ( @warnings ) {
+		my $expected = shift @expected;
+		my $actual = shift @warnings;
+	
+		is( $actual, $expected, "Checking $fielddata, $actual" );
+	}
+	#clear warnings
+	$lint007->clear_warnings();
+#	print "Report for field $currentfieldcount of ", scalar @fields007, " total fields\n";
+#	print "$badbytecount bytes were bad\n$visualizecount fields have extra data after limit\n";
+
+} #foreach 007 field
+
+is( scalar @expected, 0, "All expected messages exhausted." );
+=cut

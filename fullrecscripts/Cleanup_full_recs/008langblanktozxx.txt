@@ -1,0 +1,166 @@
+#!perl
+
+=head2 NAME and DESCRIPTION
+
+008 Language blank to zxx -- Given a file of MARC records, if any contain a language code in 008/35-37 of '   ', updates the 008 to 'zxx' and outputs the record to a separate MARC file. Reports errors to a separate .txt file.
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use warnings;
+use MARC::Batch;
+use MARC::BBMARC;
+
+#MARC::QBI::Misc for file name input (and overwrite protection)
+use MARC::QBI::Misc;
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to 008 Language blank to zxx script\n");
+
+###########################################
+###### File handling initialization #######
+###########################################
+
+#declare array to store file names
+my @file_names = ();
+#prompt for input file
+my $inputfile_message = "What is the input file? (MRC) ";
+#call get_file_name for the input file
+my ($inputfile, $error) = MARC::QBI::Misc::get_file_name($inputfile_message, '<');
+die "Error with input file name" if $error;
+push @file_names, $inputfile if $inputfile;
+
+my $outputfile_message = "What is the export file? (MRC) ";
+my ($exportfile, $error2) = MARC::QBI::Misc::get_file_name($outputfile_message, '>', \@file_names);
+die "Error with export file name" if $error2;
+push @file_names, $exportfile if $exportfile;
+
+
+my $outputfile_message2 = "What is the error message file? (TXT) ";
+my ($exportfile2, $error3) = MARC::QBI::Misc::get_file_name($outputfile_message2, '>', \@file_names);
+die "Error with error file name" if $error3;
+push @file_names, $exportfile2 if $exportfile2;
+
+open(OUT, ">$exportfile") or die "Can not open $exportfile, $!";
+
+open(OUT2, ">$exportfile2") or die "Can not open $exportfile2, $!";
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+	MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+	MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile2);
+}
+###########################################
+#### End File handling initialization #####
+###########################################
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+#declare zxx_count to store count of records updated with new 008 code
+my $zxx_count = 0;
+
+#### Start while loop through records in file #####
+RECORD: while (my $record = $batch->next()) {
+
+my @warningstoreturn;
+
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+
+	my $controlno = $record->field('001')->as_string();
+
+	#get leader to check for CIP-level
+	my $leader = $record->leader();
+	#$encodelvl is to check for CIP
+	my $encodelvl = substr($leader, 17, 1);
+
+	#get 008
+	my $field008 = '';
+	$field008 = $record->field('008')->as_string() if ($record->field('008'));
+	#get language code from 008
+	my $lang008code = (substr($field008,35,3));
+
+	#only care about lang008code of '   '
+	next RECORD unless $lang008code eq '   ';
+
+	#replace 008's '   ' code with 'zxx'
+	substr($field008, 35, 3, 'zxx');
+	my $new_008 = new MARC::Field('008', $field008);
+	$record->field('008')->replace_with($new_008);
+	print OUT $record->as_usmarc();
+	$zxx_count++;
+
+	if (@warningstoreturn) {
+		print OUT2 $controlno, "\t", (join "\t", @warningstoreturn), "\n";
+	} #if errors
+	
+} # while
+
+close $inputfile;
+close OUT;
+
+print "$zxx_count record(s) updated\n$runningrecordcount record(s) scanned.\n";
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+
+END{print "\nPress Enter to quit"; <>;}
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2009
+
+=cut

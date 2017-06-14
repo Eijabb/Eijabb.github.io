@@ -1,0 +1,137 @@
+#!perl
+
+=head2
+
+Field and subfield count--will report totals for each tag and subfield.
+
+First version: Field tags only
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+use MARC::BBMARC;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Field count script\n");
+
+##### File handling initialization ######
+#prompt for input file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile");
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+my %fieldtags;
+# declare $tagcount for total tags in all records
+my $tagcount = 0;
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+my @fields = $record->fields();
+
+foreach my $field (@fields) {
+#count each tag
+$fieldtags{$field->tag()}++;
+$tagcount++;
+}
+
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} # while
+
+#sort by tagno and put count after
+foreach my $tagno (sort {($a <=> $b)||($fieldtags{$a}<=>$fieldtags{$b})} keys %fieldtags) {
+print OUT "$tagno\t$fieldtags{$tagno}\n";
+}
+print OUT "\n", '-'x20,"\n";
+#sort by count and put tag after
+foreach my $tagno (sort {($fieldtags{$a} <=> $fieldtags{$b})||($a <=> $b)} keys %fieldtags) {
+print OUT "$fieldtags{$tagno}\t$tagno\n";
+}
+
+print "\n$runningrecordcount records scanned\n",
+"$tagcount total tags found\n";
+
+close $inputfile;
+close OUT;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+print "\n\nPress Enter to quit";
+<>;
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

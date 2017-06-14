@@ -1,0 +1,176 @@
+use Business::ISSN;
+my @issns = ('1340-2304', '13432340');
+foreach $issn (@issns) {
+if( Business::ISSN::is_valid_checksum($issn) ) { print "valid $issn\n"; }
+else {print "$issn has bad checksum\n";
+my $issn_object = new Business::ISSN($issn);
+$issn_object->fix_checksum;
+print $issn_object->as_string, " would be valid\n";}
+}
+
+
+#!perl
+
+=head2 DESCRIPTION
+
+Script (to be turned into subroutine) for validating 022s.
+Looks at 022$a and reports errors if the check digit is wrong.
+Also reports errors if 022$a is not in the form 4-digits-hypen-4-digits.
+
+Uses Business::ISSN to do validation.
+
+=head2 TO DO
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+use MARC::BBMARC;
+use Business::ISSN;
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to 022 validation script\n");
+
+##### File handling initialization ######
+#prompt for input file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile");
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+my @warningstoreturn = ();
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+	my $controlno = $record->field('001')->as_string();
+	my @fields022 = $record->field('022');
+	foreach my $field022 (@fields022) {
+
+# break subfields into code-data array and validate data
+
+		my @subfields = $field022->subfields();
+
+		while (my $subfield = pop(@subfields)) {
+			my ($code, $data) = @$subfield;
+			my $issn = $data;
+#remove nondigits
+				$issn =~ s/^\D*(\d{4}\-?\d{3}[X\d])\b.*$/$1/;
+
+#report error if this is subfield 'a' 
+#and the first 9 are not a match for $issn
+ 				if (($code eq 'a') && (substr($data,0,length($issn)) ne $issn)) {
+					push @warningstoreturn, ("$controlno\t022: Subfield a may have invalid characters, $data");
+}
+
+#report error if unable to find valid 9 character ISSN
+				if (($code eq 'a') && ($issn !~ /^\d{4}\-?\d{3}[X\d]/)){
+					push @warningstoreturn, ("$controlno\t022: Subfield a has the wrong number of digits, $data"); next;
+				} # if subfield 'a' but not correct form
+				elsif ($code eq 'a') {
+					unless (Business::ISSN::is_valid_checksum($issn) == 1) {
+						push @warningstoreturn, ("$controlno\t022: Subfield a has bad checksum, $data"); next;
+					} #if correct length ISSN has invalid check digit
+
+
+###################################################
+###################################################
+##### add elsif here if ISSN is longer than 9
+###################################################
+#						push @warningstoreturn, ("$controlno\t022: Subfield a has bad checksum, $data"); next;
+###################################################
+			} #elsif subfield 'a'
+###################################################
+###################################################
+##### elsif here if interested in checking $z or $y
+###################################################
+		} # while @subfields
+	} #foreach $field022
+
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} # while
+
+print OUT join "\n", @warningstoreturn;
+print scalar @warningstoreturn, " errors found\n";
+
+close $inputfile;
+close OUT;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+print "\n\nPress Enter to quit";
+<>;
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

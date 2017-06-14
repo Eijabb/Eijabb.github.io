@@ -1,0 +1,94 @@
+#!perl
+
+=head2 NAME
+
+Extract errors from modules
+
+=head2
+
+Given a module file (MARC::)(BBMARC, Lintadditions, or Errorchecks)
+Outputs POD info, comments, and lines with an error or warning statement.
+For example a line with: $self->warn("[TEXT of ERROR]") or push @warningstoreturn, ("[TEXT of ERROR]")
+
+This is to help find what errors the modules report.
+Also, the first step to more uniform error reporting.
+
+=cut 
+
+print "Input file: ";
+$inputfile = <>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print "Export file: ";
+$exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+
+open (IN, "<$inputfile") || die ("can't open in");
+open (OUT, ">$exportfile") || die ("can't open out");
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+my $linecount = 0;
+
+#turn $podon to 1 when in POD sections to print out those sections
+my $podon = 0;
+
+while (my $line = <IN>) {
+chomp $line;
+if (($line =~ /^\=\w/) && ($line !~ /^\=cut/)) {
+$podon = 1
+}
+elsif ($line =~ /^\=cut/) {
+print OUT "$line\n";
+$linecount++;
+$podon = 0;
+}
+
+# print out POD, comments or errors
+if ($podon == 1) {
+print OUT "$line\n";
+$linecount++;
+}
+
+#print lines with comments
+elsif ($line =~ /\#/) {
+print OUT "$line\n";
+$linecount++;
+}
+#print blank lines
+elsif ($line !~ /\S/) {
+print OUT "$line\n";
+$linecount++;
+}
+
+#print lines with an error statement
+elsif ($line =~ /(\$hasbadchars)|(\$self\->warn)|(push \@warningstoreturn)/) {
+print OUT "$line\n";
+$linecount++;
+}
+
+} #while lines
+close IN;
+close OUT;
+print "$linecount lines identified\n";
+print "Press Enter to quit";
+<>;
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

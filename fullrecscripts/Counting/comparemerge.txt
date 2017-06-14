@@ -1,0 +1,140 @@
+#!perl
+
+=head2 Description
+
+Reads file name from input line (MacPerl running window) for updated records. 
+Reads file name from input line for base records.
+Tells how many records would be updated and how many records are in a file.
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict 'vars';
+use MARC::File::USMARC;
+use MARC::BBMARC;
+
+##Time coding to wrap around program to determine how long execution takes:
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+# (could also do by subtracting 2 gettimeofday return values)
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+# do bunch of stuff here
+#########################
+### Start main program ##
+#########################
+
+print ("\nWelcome to the MARC file comparemerge program\n");
+
+#prompt for updated file, used for outputing raw
+print ("What is the updated file (newest records)?:");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+
+my @controlnostocheck = MARC::BBMARC::updated_record_array($inputfile);
+print ("Deleted file may be Deletedcontrols.txt\n");
+my @deletednos = MARC::BBMARC::read_controlnos();
+push (@controlnostocheck, @deletednos);
+my $deletedcount = (scalar @deletednos);
+
+#read command line for name of base file
+print ("Base record file:");
+my $basefile=<>;
+chomp $basefile;
+$basefile =~ s/^\"(.*)\"$/$1/;
+
+#initialize $origrawfile as new usmarc file object
+my $origrawfile = MARC::File::USMARC->in( "$basefile" );
+
+#initialize $classref as ref to USMARC package
+my $classref = MARC::File::USMARC;
+
+#initialize $origdecodedfile as new usmarc file object
+my $origdecodedfile = MARC::File::USMARC->in( "$basefile" );
+
+#initialize $updatedrawfile as new usmarc file object
+my $updatedrawfile = MARC::File::USMARC->in( "$inputfile" );
+
+#create local script-based record counter
+
+my $reccount=0;
+my $updatedcount=0;
+#loop through input files, set $origmarc to base raw records
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+#############################################
+
+while ( my $origmarc = $origrawfile->skipget() ) {
+
+
+#within loop, set $origrecord to decoded version of base records
+my $origrecord = $origdecodedfile->next(); 
+
+#get the control number of the decoded base record
+my $origcontrolno = $origrecord->field('001')->as_string();
+my @grepcontrolno = grep {$_ eq $origcontrolno} @controlnostocheck;
+unless (@grepcontrolno) {
+#############################################
+## in merge script, this is where          ##
+## printing of original raw record occurs  ##
+#############################################
+$reccount++;
+
+}
+else {
+##print ("skipped original\n");
+$updatedcount++;
+##clear grep array
+@grepcontrolno = ();
+}
+#####################################
+## Place the following within loop ##
+#####################################
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+
+} #while origrecprint
+
+while ( my $updatedrawrec = $updatedrawfile->skipget() ) {
+#########################################
+### in merge script, here is where    ###
+### printing of updated record occurs ###
+#########################################
+$reccount++;
+MARC::BBMARC::counting_print ($reccount);
+} #while updatedrecprint
+
+print ("$reccount records exported\n$updatedcount records updated\n");
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+print "\n\nPress Enter to quit";
+<>;
+
+#####################
+### END OF PROGRAM ##
+#####################

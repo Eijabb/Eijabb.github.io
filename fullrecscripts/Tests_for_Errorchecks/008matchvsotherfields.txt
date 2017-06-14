@@ -1,0 +1,213 @@
+#!perl
+
+=head2 NAME
+
+008 Match vs. Other Fields
+
+=head2 DESCRIPTION
+
+Matches 008 data against variable fields.
+Examples: 
+260$a is paired with pubctry (substr($field008,15,3))
+260$c with date1 (substr($field008,7,4)) and with 050 date.
+041 first subfield 'a' with langcode (substr($field008,35,3))
+
+Initial version only outputs countrycode\t260$a\t\tcontrolnos (tab-separated)
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+use MARC::BBMARC;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to 008 match vs. other fields\n");
+print ("This program currently only matches 260$a and 008 country\n");
+##### File handling initialization ######
+#prompt for input file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile");
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+my $linecount = 0;
+
+my %counts;
+
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+my $leader = $record->leader();
+my $controlno = $record->field('001')->as_string();
+
+#$mattype and $biblvl are from LDR/06 and LDR/07
+my $mattype = substr($leader, 6, 1); 
+my $biblvl = substr($leader, 7, 1);
+#$encodelvl is to check for CIP
+my $encodelvl = substr($leader, 17, 1);
+my $field008 = $record->field('008')->as_string();
+#skip CIP for now (to avoid missing 260 handling)
+if ($encodelvl eq '8') {
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+ next;}
+
+my $pubctry = (substr($field008,15,3));
+#$date1 and $langcode will be used in future implementation
+#my $date1 = (substr($field008,7,4));
+#my $langcode = (substr($field008,35,3));
+
+#$heading will have the tab-separated string of $pubctry\t260a[\t260a ...]\t\t\@controlnumbers
+
+#add $pubctry\t
+my $heading = $pubctry."\t";
+
+#if record has a 260
+##code does not work for multiple 260 fields (only 1st is checked?)
+if ($record->field('260')){
+#see if at least 1 260subfielda exists
+if($record->field('260')->subfield('a')) {
+
+#break 260 field into component subfields in an array
+my $field260 = $record->field('260');
+my @subfields = $field260->subfields();
+my @newsubfields = ();
+while (my $subfield = pop(@subfields)) {
+my ($code, $data) = @$subfield;
+unshift (@newsubfields, $code, $data);
+} # while
+
+#put each subfield 'a' into $heading
+for (my $index = 0; $index <=$#newsubfields; $index+=2) {
+if (($newsubfields[$index] eq 'a')) {
+#add subfield 'a' data to $heading, each separated by tabs
+$heading .= "$newsubfields[$index+1]\t";
+}
+} #for subfields in the 260
+} # 260suba exists
+
+#see if at least 1 260subfieldc exists
+#if($record->field('260')->subfield('c')) {} # 260subc exists
+} #260 exists
+#if 260 doesn't exist, report an error because we know it is not coded '8' for CIP
+else {print $controlno, "\tis not coded as CIP but has no 260\n"} #no 260
+
+#clean $heading by removing all "[S.l.]\t" from the string
+$heading =~ s/\[S\.l\.\] [:;,]\t//g;
+#look for non-standard [S.l.]
+print "$heading\t$controlno\n" if ($heading =~ /\[S\. ?l\.\]/i);
+#create reference to access array of control numbers associated with $heading in %counts
+my $controlarrayref = \@{$counts{$heading}->{control}};
+### push control numbers onto respective field ###
+push (@{$controlarrayref}, ($controlno, "\t"));
+$linecount++;
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} # while
+
+### Removed sorting due to nonfunctional sorting ###
+my @headings = keys %counts;
+
+###print "headings:";
+#print join ("\n", @headings);
+
+# Print out the results
+for my $heading ( sort @headings ) {
+
+#print count, tab, heading, tab
+printf OUT ( "%d\t%s\t", (scalar @{$counts{$heading}->{control}})/2, "$heading\t");
+
+#print tab, controlnos (separated by tabs)
+print OUT join ("\t", "@{$counts{$heading}->{control}}\n");
+}
+
+
+
+print "$linecount records were not CIP\n";
+
+
+
+close $inputfile;
+close OUT;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+print "\n\nPress Enter to quit";
+<>;
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

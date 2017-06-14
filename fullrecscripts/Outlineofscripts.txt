@@ -1,0 +1,62 @@
+Cleanup full recs
+	003cleanupscript.txt
+	007cleanupscript.txt
+	010cleanupscript.txt
+	cleantrailingspaces.txt
+Code list cleanup
+	countrycodelistclean.txt
+	gaccleanupscript.txt
+	languagecodelistclean.txt
+Counting
+	comparemerge.txt
+	countrecords.txt
+	countrecsbytype.txt
+	errreptcount.txt
+	fieldsubfieldcounts.txt
+Extraction
+	extractbycontrolno.txt
+	extractbycontrolnoignrspace.txt
+	extracterrorsfrommodules.txt
+	extractnonbookby008date.txt
+	extractpcip.txt
+	extractspecsubfield.txt
+	fieldextraction.txt
+	fieldextraction3.txt
+	fieldextractioncleanspaces.txt
+	fieldextractionnocontrols.txt
+findmultiplefields.txt
+hasbeenupdated.txt
+Linting
+	lintallchecks.txt
+	lintcheck2.txt
+	linttest.txt
+	lintwithadditions.txt
+	lintwithadditionsselective.txt
+mermarcfiles.txt
+outputchangestogether.txt
+printrecordasformatted.txt
+rawanddecodedscan.txt
+splitmarcfile.pl.txt
+Tests for Errorchecks
+	008checker.txt
+	008illvs300.txt
+	008matchvsotherfields.txt
+	checkcipforstockno.txt
+	Errorchecks.t.txt
+	findemptysubfields.txt
+	findlongrecords.txt
+	findmultiperiodsafter010.txt
+	findmultiplefields.txt
+	findmultispacesafter010.txt
+	findunderscoredollarinfield.txt
+	ldrvalidatescript.txt
+	pubdatecomparisons.txt
+	testgetdate.txt
+	testnewerrorchecks.txt
+	testnewQBIerrorchecks.txt
+	viddvdvsvhs.txt
+Tests for Lintadditions
+	check022script.txt
+	isbnvalidatescript.txt
+	lintwithadditionsselective.txt
+	validate007.t.txt

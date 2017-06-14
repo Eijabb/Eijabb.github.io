@@ -1,0 +1,325 @@
+#!perl
+
+=head2 NAME and DESCRIPTION
+
+440 to 490-830 -- Given a file of MARC records, if 440 is present, converts to 490-830 pair and outputs the updated record.
+
+=head2 Steps
+
+Get 440s
+For each 440:
+	Copy to 490 variable
+		Set indicators to '1 '
+		Strip $n and $p in favor of ' ', as well as any preceding punctuation
+		Replace this 440 with the revised new 490 field
+	Copy to 830 variable
+		Convert to as_usmarc() format for easier parsing
+		Get indicator 2 to find skip characters
+		Get substring of 440 data: substr(440data, indicator 2)
+		Capitalize 1st character if 1st indicator is not 0.
+		Strip $x and preceding comma (until implemented in MARC 21, so not necessarily necessary)
+		Add ending punctuation to last subfield if needed (not parens or other punctuation mark)
+		Set indicators to ' 0'
+		Break field into subfield parts
+		Create new field '830' and put parts together.
+		Add new 830 to record in tag order.
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use warnings;
+use MARC::Batch;
+use MARC::BBMARC;
+
+#MARC::QBI::Misc for file name input (and overwrite protection)
+use MARC::QBI::Misc;
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to script\n");
+
+###########################################
+###### File handling initialization #######
+###########################################
+
+#declare array to store file names
+my @file_names = ();
+#prompt for input file
+my $inputfile_message = "What is the input file? (MRC) ";
+#call get_file_name for the input file
+my ($inputfile, $error) = MARC::QBI::Misc::get_file_name($inputfile_message, '<');
+die "Error with input file name" if $error;
+push @file_names, $inputfile if $inputfile;
+
+my $outputfile_message = "What is the export file? (MRC) ";
+my ($exportfile, $error2) = MARC::QBI::Misc::get_file_name($outputfile_message, '>', \@file_names);
+die "Error with export file name" if $error2;
+push @file_names, $exportfile if $exportfile;
+
+
+my $outputfile_message2 = "What is the error message file? (TXT) ";
+my ($exportfile2, $error3) = MARC::QBI::Misc::get_file_name($outputfile_message2, '>', \@file_names);
+die "Error with error file name" if $error3;
+push @file_names, $exportfile2 if $exportfile2;
+
+open(OUT, ">$exportfile") or die "Can not open $exportfile, $!";
+
+open(OUTERRS, ">$exportfile2") or die "Can not open $exportfile2, $!";
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+	MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+	MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile2);
+}
+###########################################
+#### End File handling initialization #####
+###########################################
+
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+my $recs_w_440_count = 0;
+my $recs_w_problems_count = 0;
+
+#### Start while loop through records in file #####
+RECORD: while (my $record = $batch->next()) {
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+	my @errors_to_report = ();
+
+	my $controlno = $record->field('001')->as_string();
+
+	#skip record if no 440s
+	unless ($record->field('440')) {
+		next RECORD;
+	} #unless 440 present
+	else {
+		$recs_w_440_count++;
+		my @series440s = $record->field('440');
+	
+
+		foreach my $series440 (@series440s) {
+
+			my $series_nonfiler = $series440->indicator('2');
+			my @subfields490 = $series440->subfields();
+			my @subfields830 = $series440->subfields();
+
+			my @newsubfields490 = ();
+			my @newsubfields830 = ();
+		
+			######################
+			# parse 440 into 490 #
+			######################
+			#break subfields into code-data array (so the entire field is in one array)
+			while (my $subfield_490 = shift(@subfields490)) {
+				my ($code, $data) = @$subfield_490;
+
+				if (($code eq 'n')||($code eq 'p')) {
+					#push @errors_to_report, (join "", $newsubfields490[-1], " $data"); #testing
+					$newsubfields490[-1] .= " $data";
+				} #if sub _n or sub _p
+				else {
+					push (@newsubfields490, $code, $data);
+				} #else no n or p
+			} # while 490 subfields
+
+			#create new 490
+			my $field_490_new = new MARC::Field('490', '1', '', @newsubfields490);
+
+			#replace 440 with new 490
+			$series440->replace_with($field_490_new);
+
+			######################
+			# parse 440 into 830 #
+			######################
+			#break subfields into code-data array (so the entire field is in one array)
+			while (my $subfield_830 = shift(@subfields830)) {
+				my ($code, $data) = @$subfield_830;
+
+				#for subfield 'a', revise data if 2nd indicator indicates article/skip characters
+				if ($code eq 'a') {
+					if ($series_nonfiler ne '0') {
+						if ($series_nonfiler =~ /[^0-9]/) {
+							push @errors_to_report, ("440 2nd indicator not numeric ($series_nonfiler) for $data");
+							push (@newsubfields830, $code, $data);
+						} #if 
+						else {
+							#clean start of subfield, removing skip characters and capitalizing 1st remaining letter
+							my $new_data = substr($data, 0+$series_nonfiler);
+							$new_data = ucfirst $new_data;
+							push (@newsubfields830, $code, $new_data);
+						}
+					} #if indicator not '0'
+					else {
+						push (@newsubfields830, $code, $data);
+					} #2nd indicator is 0
+				} #if subfield 'a'
+				#elsif ($code eq 'x') {
+						#ISSN, not allowed in 830 prior to Oct. 2008 MARC 21 update (Aug. 16, 2009 OCLC implementation)
+						#strip comma from preceding subfield
+						#don't add subfield x or its data
+				#} #elsif subfield x
+
+				else {
+					push (@newsubfields830, $code, $data);
+				} #else not a
+			} # while 830 subfields
+
+			#strip square brackets from any subfield
+			if ((join "", @newsubfields830) =~ /[\[\]]/) {
+				for (0..$#newsubfields830) {
+					$newsubfields830[$_] =~ s/[\[\]]//g;
+				} #foreach new 830 subfield
+				push @errors_to_report, (join "", "Square brackets removed: ", ($series440->as_string()));
+			}
+
+			#fix punctuation on last subfield
+			unless ($newsubfields830[$#newsubfields830] =~ /[\!\?\-\'\"\)\.]$/) {
+				$newsubfields830[$#newsubfields830] .= ".";
+			} #unless already ends in punctuation
+			elsif ($newsubfields830[$#newsubfields830] =~ /([\'\"]+)$/) {
+				$newsubfields830[$#newsubfields830] =~ s/([\'\"]+)$/.$1/;
+			} #if ends in quote
+#######
+
+=head2 punct
+
+ 8xx must end in proper punctuation (may want to make this less restrictive by allowing trailing spaces)
+        if ($newsubfields[$#newsubfields] !~ /[\!\?\-\'\"\)\.]$/) {
+            $self->warn ($tagno, ": Check ending punctuation.");
+        }
+
+# 8xx should not end with closing parens-period
+        if ($newsubfields[$#newsubfields] =~ /\)\.$/) {
+            $self->warn ($tagno, ": Should not end with closing parens-period.");
+        }
+=cut
+
+			#create new 830
+#push @errors_to_report, (join "\t", @newsubfields830);	#testing
+			my $field_830_new = new MARC::Field('830', '', '0', @newsubfields830);
+
+
+			#add 830 in tag order after last 830
+			## find the last 830
+			my $last_830;
+			my @fields_830 = $record->field('830');
+			if (@fields_830) {
+				$last_830 = $fields_830[$#fields_830];
+				## insert new 830 after the $last_830
+				my $addedcount = $record->insert_fields_after($last_830, ($field_830_new));
+				#inserting after appears to fail if last_830 is last field in record, so append if it wasn't added
+				unless ($addedcount) {
+					$record->append_fields(($field_830_new));
+#					push @errors_to_report, "Check placement of 830--last field? (@newsubfields830)";
+				} #unless added 830
+			} #if fields_830
+			else {
+				#no 830s so look for last field after 830 and insert before it or after last tag < 830
+				my $after_830;
+				foreach ($record->fields()) {
+					#take account of non-numeric tags
+					next if ($_->tag() =~ /[^0-9]/);
+					$after_830 = $_;
+					last if ($_->tag() > 830);
+				} #foreach field
+				## insert new 830 after the $after_830 if tag is >830
+				if ($after_830 && ($after_830->tag() =~ /\d\d\d/) && ($after_830->tag() > 830)) {
+#push @errors_to_report, "if > 830(@newsubfields830)"; #testing
+					$record->insert_fields_before($after_830, ($field_830_new));
+				} #if after_830 > 830
+				elsif ($after_830 && ($after_830->tag() =~ /\d\d\d/) && ($after_830->tag() < 830)) {
+#push @errors_to_report, "if < 830(@newsubfields830)"; #testing
+					my $addedcount = $record->insert_fields_after($after_830, ($field_830_new));
+					unless ($addedcount) {
+						$record->append_fields(($field_830_new));
+	#					push @errors_to_report, "Check placement of 830--last field? (@newsubfields830)";
+					} #unless added 830
+				} #elsif after_830 < 830
+				else {
+					$record->append_fields(($field_830_new));
+					push @errors_to_report, "Check placement of 830--last field (@newsubfields830)?";
+				} #else neither < nor > 830 or no afer_830
+			} #else no 830
+
+		} #foreach 440
+	} #else 440 exists
+
+	print OUT $record->as_usmarc();
+
+	if (@errors_to_report) {
+			print OUTERRS (join "\t", $controlno, @errors_to_report), "\n";
+			$recs_w_problems_count++;
+	} #if errors
+
+} # while
+
+print "$recs_w_440_count records with 440s found.\n$recs_w_problems_count records with problems found.\n$runningrecordcount records scanned.";
+
+close $inputfile;
+close OUT;
+close OUTERRS;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+
+END{print "\nPress Enter to quit"; <>;}
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2009
+
+=cut

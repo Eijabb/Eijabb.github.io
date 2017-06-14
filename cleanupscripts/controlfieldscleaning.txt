@@ -1,0 +1,50 @@
+#!perl
+
+=head2 Name and Description
+
+Control fields Cleaning
+
+Asks for file for cleaning (output from control field  (001-009) extraction (no controls) script works best).
+Asks for output filename.
+Removes count of field and end tabs
+To do: Sort lines.
+
+=cut
+###############################
+###############################
+use MARC::BBMARC;
+
+print "Input file:";
+my $extractedinputfile = <>;
+chomp $extractedinputfile;
+$extractedinputfile =~ s/^\"(.*)\"$/$1/;
+print "Output file:";
+my $extractedoutfile = <>;
+chomp $extractedoutfile;
+$extractedoutfile =~ s/^\"(.*)\"$/$1/;
+#read line from file
+open (EXTRACTEDFILE, "<$extractedinputfile") or die "cannot open controlnofile";
+open (OUTPUTFILE, ">$extractedoutfile") or die "cannot open output";
+
+my $runningrecordcount=0;
+
+while (my $line = <EXTRACTEDFILE>){
+### remove counts before field data
+$line =~ s/^[\d]+?\t//;
+### remove trailing tabs
+$line =~ s/\t\t\s*$//;
+print OUTPUTFILE "$line\n";
+
+#################################
+
+$runningrecordcount++;
+my $countprinting = MARC::BBMARC::counting_print ($runningrecordcount);
+
+} #while
+close EXTRACTEDFILE;
+close OUTPUTFILE;
+print "$runningrecordcount lines cleaned.\n";
+
+print "\n\nPress Enter to quit";
+<>;
+

@@ -1,0 +1,48 @@
+#!perl
+
+=head2
+
+Given fieldextraction result (for field 042) as input ,
+Identifies and outputs lines without either
+pcc, lcac, or lccopycat.
+
+
+=cut 
+
+print "Input file: ";
+$inputfile = <>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print "Export file: ";
+$exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+
+open (IN, "<$inputfile") || die ("can't open in");
+
+open (OUT, ">$exportfile") || die ("can't open out");
+my $linecount = 0;
+while (my $line = <IN>) {
+chomp $line;
+#remove extra spaces between tabs
+$line =~ s/\t\s{7}\@/\t\@/g;
+
+#$line =~ s/^\d+?\t\d{3}\s[ \d][ \d]\s\@\w\t//;
+
+my @linearray = split ("\t\t", $line);
+my @controlnoarray = split ("\t", $linearray[1]);
+if ($linearray[0] !~ /(pcc)|(lcac)|(lccopycat)/) {
+print "$linearray[0] is first element, with ", scalar @controlnoarray/2, " elements\n";
+print OUT "$line\n";
+$linecount++;
+}
+}
+
+
+close IN;
+
+close OUT;
+print "$linecount lines identified\n";
+print "Press Enter to quit";
+<>;
+

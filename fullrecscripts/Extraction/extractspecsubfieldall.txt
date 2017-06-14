@@ -1,0 +1,259 @@
+#!perl
+
+our $VERSION = 1.02;
+
+=head2
+
+Template for extracting specific subfields from specific fields.
+This is based on fieldextraction.pl.
+After the prompts in fieldextraction.pl, it prompts for a single subfield code to extract.
+This version extracts all instances of the specific subfield.
+
+=head2 TODO
+
+This version will likely break with non-numeric tags. This should be fixed if such tags are present in the records to be parsed.
+
+Relies on MARC::QBI::Misc for output file overwrite protection. This functionality needs to be moved somewhere more distributable (BBMARC for example?).
+
+=head2 VERSION HISTORY
+
+Version 1.02--Created Aug. 24, 2005.
+
+ -Initial version of Extract Specific Subfield All, based on original Extract Specific Subfield. Renamed with 'all' added at end of name to keep original version around.
+
+ --Fixes bug (or feature?) in original where only the first subfield of the specified type was extracted from each matching field.
+ --Fixed bug in counting headings
+ --Implemented MARC::QBI::Misc-basd overwrite protection.
+ --Tabbed for readability.
+
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+use MARC::BBMARC;
+
+#MARC::QBI::Misc for file name input (and overwrite protection)
+use MARC::QBI::Misc;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Subfield Extraction (all) script\n");
+
+###########################################
+###### File handling initialization #######
+###########################################
+
+#declare array to store file names
+my @file_names = ();
+#prompt for input file
+my $inputfile_message = "What is the input file? (MARC) ";
+#call get_file_name for the input file
+my ($inputfile, $error) = MARC::QBI::Misc::get_file_name($inputfile_message, '<');
+die "Error with input file name" if $error;
+push @file_names, $inputfile if $inputfile;
+
+my $outputfile_message = "What is the export file? (txt) ";
+my ($exportfile, $error2) = MARC::QBI::Misc::get_file_name($outputfile_message, '>', \@file_names);
+die "Error with export file name" if $error2;
+push @file_names, $exportfile if $exportfile;
+
+open(OUT, ">$exportfile") or die "Can not open $exportfile, $!";
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+	MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+###########################################
+#### End File handling initialization #####
+###########################################
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+#prompt for field to extract
+print ("Enter three-digit tag number to extract: ");
+my $extractfieldnumber = MARC::BBMARC::getthreedigits();
+chomp $extractfieldnumber;
+
+my @indicators;
+my @indicatortypes;
+my $subfieldtoget;
+
+##### fill indicators if not control field #####
+if (($extractfieldnumber >= "010")|| ($extractfieldnumber =~ /\./)) {
+	print ("That\'s a field with indicators\n");
+	my ($gotindicators, $gotindicatortypes) =  MARC::BBMARC::getindicators();
+	print ("You entered $$gotindicators[1] for firstindicator\n and $$gotindicators[2] for secondindicator\n");
+	####### dereference indicator arrays for easier manipulation ###
+	@indicators = @$gotindicators;
+	@indicatortypes = @$gotindicatortypes;
+
+	until ($subfieldtoget) {
+		print "What subfield would you like? (one at a time) ";
+		my $desiredsubfield = <>;
+		chomp $desiredsubfield;
+		unless ($desiredsubfield =~ /^\w$/) {print "$desiredsubfield is not a valid subfield\n"; }
+		else {$subfieldtoget = $desiredsubfield;}
+	} #until have subfield code
+} #if indicators and subfields
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+
+my $updatedcount=0;
+my $runningrecordcount=0;
+my %counts;
+
+#### Start while loop through records in file #####
+while ( my $record = $batch->next() ) {
+	### loop through each field having desired tag ###
+
+	for my $field ( $record->field("$extractfieldnumber") ) {
+		my @headings = ();
+
+		# fields < 010 have no subfields so can print out without worrying about which subfield
+		# wildcard (period) '6..' evaluates to 6 in the comparison, so use the second condition to account for that 
+		if (($extractfieldnumber < "010")  && ($extractfieldnumber !~ /\./)) {push @headings, $field->as_string();}
+		else {
+
+			##heading is not control field, so determine desired indicator extraction ##
+
+##################################################
+#### Indicator determination and field extract ###
+##################################################
+			# 1st any, 2nd any
+			if (($indicatortypes[1] eq 'any') && ($indicatortypes[2] eq 'any')) {
+				@headings = $field->subfield($subfieldtoget);
+			} #if any indicators for both 1st and 2nd
+			##### 1st any, 2nd digit or blank
+			elsif (($indicatortypes[1] eq 'any') && ($indicatortypes[2] eq 'blank' || $indicatortypes[2] eq 'digit')) {
+				@headings = $field->subfield($subfieldtoget) if ($field->indicator(2) eq $indicators[2]);
+			} #elsif any 1st, matching 2nd
+			##### 1st digit or blank, 2nd any
+			elsif ((($indicatortypes[1] eq 'blank' || $indicatortypes[1] eq 'digit') && ($indicatortypes[2] eq 'any'))) {
+				@headings = $field->subfield($subfieldtoget) if ($field->indicator(1) eq $indicators[1]);
+			} #elsif matching 1st, any 2nd
+			##### 1st digit or blank, 2nd digit or blank
+			elsif ((($indicatortypes[1] eq 'blank' || $indicatortypes[1] eq 'digit') && ($indicatortypes[2] eq 'blank' || $indicatortypes[2] eq 'digit'))) {
+				@headings = $field->subfield($subfieldtoget) if (($field->indicator(1) eq $indicators[1]) && ($field->indicator(2) eq $indicators[2]));
+			} #elsif matching 1st and 2nd
+			###### Add other cases if this appears: #####
+			else {
+				print "another indicator case needed\n";
+			} #else other case
+		} # else not control field #
+##################################################
+##################################################
+
+		my $controlno =$record->field('001')->as_string();
+
+		# if the field to extract exists, count it and associate its control number
+
+		#go through each instance of the heading and add to output list
+		foreach my $heading (@headings) {
+			##would clean white space and punct. at end of field
+			#$heading =~ s/[.,]?\s*$//;
+
+			# Now count it
+
+			$updatedcount++;
+			### push control numbers onto respective field
+			my $controlarrayref = \@{$counts{$heading}->{control}};
+			push (@{$controlarrayref}, ($controlno, "\t"));
+
+###
+		} # foreach heading
+	} # for
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+} # while
+
+### Removed sorting due to nonfunctional sorting ###
+my @headings = keys %counts;
+
+###print "headings:";
+#print join ("\n", @headings);
+
+# Print out the results
+for my $heading (sort @headings ) {
+#remove extra spaces between subfields
+#need to copy the heading so the original can be used later
+my $cleanedheading = $heading;
+$cleanedheading =~ s/\t\s{7}\@/\t\@/g;
+
+#print count, tab, heading, tab
+printf OUT ( "%d\t%s\t", (scalar @{$counts{$heading}->{control}})/2, "$cleanedheading\t");
+
+#print tab, controlnos (separated by tabs)
+print OUT join ("\t", "@{$counts{$heading}->{control}}\n");
+}
+
+
+
+print "$updatedcount subfields are defined\n";
+close OUT;
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+	MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+print "\n\nPress Enter to quit";
+<>;
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2005
+
+=cut

@@ -1,0 +1,227 @@
+#!perl
+
+=head2
+
+Preliminary code for eventual subroutine to validate parts of the leader.
+
+Checks bytes 5, 6, 7, 17, and 18
+
+$ldrbytes{$key} has keys "\d\d", "\d\dvalid" for each of the bytes checked (5, 6, 7, 17, 18)
+
+"\d\dvalid" is a hash ref containing valid code linked to the meaning of that code.
+
+print $ldrbytes{'05valid'}->{'a'}, "\n";
+yields: 'Increase in encoding level'
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use warnings;
+use MARC::Batch;
+use MARC::BBMARC;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Validate Leader script\n");
+
+##### File handling initialization ######
+#prompt for input file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile");
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+##########################################
+### Initialize valid ldr bytes in hash ###
+##########################################
+
+my %ldrbytes = (
+	'05' => 'Record status',
+	'05valid' => {
+		'a' => 'Increase in encoding level',
+		'c' => 'Corrected or revised',
+		'd' => 'Deleted',
+		'n' => 'New',
+		'p' => 'Increase in encoding level from prepublication'
+	},
+	'06' => 'Type of record',
+	'06valid' => {
+		'a' => 'Language material',
+		'b' => 'Archival and manuscripts control [OBSOLETE]',
+		'c' => 'Notated music',
+		'd' => 'Manuscript notated music',
+		'e' => 'Cartographic material',
+		'f' => 'Manuscript cartographic material',
+		'g' => 'Projected medium',
+		'h' => 'Microform publications [OBSOLETE]',
+		'i' => 'Nonmusical sound recording',
+		'j' => 'Musical sound recording',
+		'k' => 'Two-dimensional nonprojectable graphic',
+		'm' => 'Computer file',
+		'n' => 'Special instructional material [OBSOLETE]',
+		'o' => 'Kit',
+		'p' => 'Mixed material',
+		'r' => 'Three-dimensional artifact or naturally occurring object',
+		't' => 'Manuscript language material'
+	},
+	'07' => 'Bibliographic level',
+	'07valid' => {
+		'a' => 'Monographic component part',
+		'b' => 'Serial component part',
+		'c' => 'Collection',
+		'd' => 'Subunit',
+		'i' => 'Integrating resource',
+		'm' => 'Monograph/item',
+		's' => 'Serial'
+	},
+	'17' => 'Encoding level',
+	'17valid' => {
+		' ' => 'Full level',
+		'1' => 'Full level, material not examined',
+		'2' => 'Less-than-full level, material not examined',
+		'3' => 'Abbreviated level',
+		'4' => 'Core level',
+		'5' => 'Partial (preliminary) level',
+		'7' => 'Minimal level',
+		'8' => 'Prepublication level',
+		'u' => 'Unknown',
+		'z' => 'Not applicable'
+	},
+	'18' => 'Descriptive cataloging form',
+	'18valid' => {
+		' ' => 'Non-ISBD',
+		'a' => 'AACR 2',
+		'i' => 'ISBD',
+		'p' => 'Partial ISBD (BK) [OBSOLETE]',
+		'r' => 'Provisional (VM MP MU) [OBSOLETE]',
+		'u' => 'Unknown'
+	}
+    
+); # %ldrbytes
+
+my @warningstoreturn = ();
+
+##########################################
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+
+my $leader = $record->leader();
+my $status = substr($leader, 5, 1);
+my $mattype = substr($leader, 6, 1); 
+my $biblvl = substr($leader, 7, 1);
+my $encodelvl = substr($leader, 17, 1);
+my $catrules = substr($leader, 18, 1);
+my $controlno = $record->field('001')->as_string();
+
+#check LDR/05
+unless ($ldrbytes{'05valid'}->{$status}) {
+push @warningstoreturn, "$controlno\tLDR: Byte 05, Status $status is invalid.";
+}
+#check LDR/06
+unless ($ldrbytes{'06valid'}->{$mattype}) {
+push @warningstoreturn, "$controlno\tLDR: Byte 06, Material type $mattype is invalid.";
+}
+#check LDR/07
+unless ($ldrbytes{'07valid'}->{$biblvl}) {
+push @warningstoreturn, "$controlno\tLDR: Byte 07, Bib. Level, $biblvl is invalid.";
+}
+#check LDR/17
+unless ($ldrbytes{'17valid'}->{$encodelvl}) {
+push @warningstoreturn, "$controlno\tLDR: Byte 17, Encoding Level, $encodelvl is invalid.";
+}
+#check LDR/18
+unless ($ldrbytes{'18valid'}->{$catrules}) {
+push @warningstoreturn, "$controlno\tLDR: Byte 18, Cataloging rules, $catrules is invalid.";
+}
+
+
+
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} # while
+
+print OUT join "\n", @warningstoreturn;
+print scalar @warningstoreturn, " errors found\n";
+
+close $inputfile;
+close OUT;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+print "\n\nPress Enter to quit";
+<>;
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

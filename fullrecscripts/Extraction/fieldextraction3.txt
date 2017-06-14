@@ -1,0 +1,146 @@
+#!perl
+
+=head2 Description
+
+Field extraction3. Asks for input file and export file.
+Then asks for three digit field number to extract. 
+Exports that entire field as a string. 
+Replaces Field Extraction2.
+################################
+##Uses MARC::BBMARC subroutines: 
+##as_formatted2(), 
+##startstop_time(), 
+##getthreedigits(), 
+##counting_print ($runningrecordcount).
+######################################
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::File::USMARC;
+use MARC::BBMARC;
+
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Field Extraction3 script\n");
+print ("Help for MacOS: Add colons to traverse up and down within folders\n");
+print ("For example, ::testmarcfiles:[filename] goes up one level to folder testmarcfiles\n");
+##### File handling initialization ######
+#prompt for updated file
+print ("What is the input file?: ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("Export file has count, hdg, and controlnos with that heading, separated by tabs\n");
+print ("Export record file: ");
+#read command line for name of export file
+my $exportfile= <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+
+open(EXTRACTEDFIELDS, ">$exportfile") or die "cannot open extractedfields";
+
+#initialize $infile as new usmarc file object
+my $infile = MARC::File::USMARC->in( "$inputfile" );
+
+########## Start extraction #########
+
+#prompt for field to extract
+print ("Type 3 digit field number: ");
+my $extractfieldnumber = MARC::BBMARC::getthreedigits();
+chomp $extractfieldnumber;
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+
+my $updatedcount=0;
+my $runningrecordcount=0;
+my %counts;
+#### Start while loop through records in file #####
+
+while ( my $marc = $infile->next() ) {
+
+for my $field ( $marc->field("$extractfieldnumber") ) {
+
+#line below would find 600 coded as LCSH if $extractfieldnumber is 600
+my $heading = $field->as_formatted2() if ($field->indicator(2) == 0);
+my $controlno =$marc->field('001')->as_string();
+
+# if the field to extract exists, count it and associate its control number
+
+if (defined ($heading)) {
+##would clean white space and punct. at end of field
+#$heading =~ s/[.,]?\s*$//;
+
+# Now count it
+
+$updatedcount++;
+### push control numbers onto respective field ###
+###%counts = ( $heading => {control => \@controlnumbers});
+my $controlarrayref = \@{$counts{$heading}->{control}};
+push (@{$controlarrayref}, ($controlno, "\t"));
+
+###
+
+} # if heading defined
+} # for
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+} # while
+
+$infile->close();
+
+# Sort the list of headings based on the count of each.
+my @headings = reverse sort { $counts{$a} <=> $counts{$b} } keys %counts;
+
+###print "headings:";
+#print join ("\n", @headings);
+
+# Print out the results
+for my $heading ( @headings ) {
+printf EXTRACTEDFIELDS ( "%d\t %s\t", (scalar @{$counts{$heading}->{control}})/2, "$heading\t");
+print EXTRACTEDFIELDS join ("\t", "@{$counts{$heading}->{control}}\n");
+}
+
+
+
+print "$updatedcount fields are defined\n";
+close EXTRACTEDFIELDS;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+print "\n\nPress Enter to quit";
+<>;
+
+#####################
+### END OF PROGRAM ##
+#####################

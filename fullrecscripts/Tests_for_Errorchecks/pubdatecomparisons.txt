@@ -1,0 +1,257 @@
+#!perl
+
+=head2
+
+Date matching 008, 050, 260
+
+Attempts to match date of publication in 008 date1, 050 subfield 'b', and 260 subfield 'c'.
+This is a starting point script for a subroutine in [MARC::]Errorchecks.pm which will do the same.
+
+Reports errors when one of the fields does not match.
+
+Handles cases where 050 or 260 (or 260c) does not exist.
+-Currently if the program is unable to get either the date1, any 050 with $b, or a 260 with $c, it goes to the next record.
+-Future, or better, behavior, might be to continue processing for the other fields.
+
+Handles cases where 050 is different due to conference dates.
+Conference exception handling is currently limited to presence of 111 field.
+
+
+=head2 KNOWN PROBLEMS
+
+May not deal well with serial records (problem not even approached).
+
+Only examines 1st 260, does not account for more than one 260 (recent addition).
+
+=head2 TO DO
+
+Improve Conference publication checking (limited to 111 field being present for this version)
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+use MARC::BBMARC;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to field date comparison script\n");
+
+##### File handling initialization ######
+#prompt for input file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile");
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+my @warningstoreturn = ();
+
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+
+##get leader and retrieve its relevant bytes, 
+##$encodelvl ('8' for CIP, ' ' [space] for 'full')
+
+my $leader = $record->leader();
+#my $mattype = substr($leader, 6, 1); 
+#my $biblvl = substr($leader, 7, 1);
+my $encodelvl = substr($leader, 17, 1);
+
+my $controlno = $record->field('001')->as_string();
+
+#skip CIP-level records unless 260 exists
+if ($encodelvl eq '8') {next unless ($record->field('260'));}
+
+my $field008 = $record->field('008')->as_string();
+#date1 is in bytes 7-10
+my $date1 = substr($field008, 7, 4);
+#report error in getting $date1
+## then ignore the rest of the record
+unless ($date1 && ($date1 =~ /^\d{4}$/)) {push @warningstoreturn, ("$controlno\t008: Could not get date 1"); next;}
+
+#get 050(s) if it (they) exist(s)
+my @fields050 = $record->field('050') if (($record->field('050')) && $record->field('050')->subfield('b'));
+#report error in getting at least 1 050 with subfield _b
+##then ignore the rest of the record
+unless (@fields050) {push @warningstoreturn, ("$controlno\t050: Could not get 050 or 050 subfield b"); next;}
+
+#get 050 date, make sure each is the same if there are multiple fields
+
+my @dates050 = ();
+#look for date at end of $b in each 050
+foreach my $field050 (@fields050) {
+if ($field050->subfield('b')) {
+my $subb050 = $field050->subfield('b');
+#remove nondigits and look for 4 digits
+$subb050 =~ s/^.*\b(\d{4})\D*$/$1/;
+#add each found date to @dates050
+push @dates050, ($subb050) if ($subb050 =~ /\d{4}/);
+} # if 050 has $b
+} #foreach 050 field
+
+#compare each date in @dates050
+while (scalar @dates050 > 1) {
+#compare first and last
+($dates050[0] == $dates050[-1]) ? (pop @dates050) : (push @warningstoreturn, ("$controlno\t050: Dates do not match in each of the 050s"));
+#stop comparing if dates don't match
+last if @warningstoreturn;
+}
+
+my $date050;
+
+#if successful, only one date will remain and @warningstoreturn will not have an 050 error
+if (($#dates050 == 0) && ((join "\t", @warningstoreturn) !~ /Dates do not match in each of the 050s/)) {
+
+# set $date050 to the date in @dates050 if it is exactly 4 digits
+if ($dates050[0] =~ /^\d{4}$/) {$date050 = $dates050[0];}
+else {push @warningstoreturn, ("$controlno\t050: Unable to find 4 digit year in subfield b"); next;
+}
+}
+
+#get 260 field if it exists and has a subfield 'c'
+my $field260 = $record->field('260') if (($record->field('260')) && $record->field('260')->subfield('c'));
+unless ($field260) {push @warningstoreturn, ("$controlno\t260: Could not get 260 or 260 subfield c"); next;}
+
+#look for date in 260 _c (starting at the end of the field)
+##only want first date in last subfield _c
+
+my @subfields = $field260->subfields();
+my @newsubfields = ();
+my $wantedsubc;
+#break subfields into code-data array
+#stop when first subfield _c is reached (should be the last subfield _c of the field)
+while (my $subfield = pop(@subfields)) {
+my ($code, $data) = @$subfield;
+if ($code eq 'c' ) {$wantedsubc = $data; last;}
+unshift (@newsubfields, $code, $data);
+} # while
+
+my $date260;
+
+#extract 4 digit date portion
+$wantedsubc =~ s/^.*?\b\D*(\d{4})\D*\b.*$/$1/;
+
+if ($wantedsubc =~ /^\d{4}$/) {$date260 = $wantedsubc;}
+else {push @warningstoreturn, ("$controlno\t260: Unable to find 4 digit year in subfield c"); next;
+}
+
+#####################################
+#####################################
+### to skip non-book records: ###
+#if ($mattype ne 'a') {next;}
+#####################################
+#####################################
+
+
+##############################################
+### Check for conference publication here ####
+##############################################
+my $isconfpub = 0;
+
+if (($record->field(111)) || ($record->field(110) && $record->field(110)->subfield('d'))) {$isconfpub = 1;}
+
+#match 008 $date1, $date050, and $date260 unless record is for conference.
+unless ($isconfpub == 1) {
+unless ($date1 == $date050 && $date050 == $date260) {
+push @warningstoreturn, ("$controlno\tPub. Dates: 008 date1, $date1, 050 date, $date050, and 260_c date, $date260 do not match"); next;
+} #unless all three match
+} #unless conf
+# otherwise for conf. publications match only $date1 and $date260
+else {
+unless ($date1 == $date260) {
+push @warningstoreturn, ("$controlno\tPub. Dates: 008 date1, $date1 and 260_c date, $date260 do not match"); next;
+} #unless conf with $date1 == $date260
+} #else conf
+
+
+} # while
+
+
+print OUT join ("\n", @warningstoreturn, "\n");
+
+print (scalar @warningstoreturn, " errors were found\n");
+
+
+close $inputfile;
+close OUT;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+print "\n\nPress Enter to quit";
+<>;
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

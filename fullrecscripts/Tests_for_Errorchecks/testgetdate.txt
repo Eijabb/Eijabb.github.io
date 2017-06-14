@@ -1,0 +1,8 @@
+( $data{sec}, $data{min}, $data{hour}, $data{day}, $data{mon}, $data{year},
+$data{wday}, $data{yday}, $data{isdst} ) = localtime( $^T );
+
+my $curday = $data{day};
+my $curmon = $data{mon}+1;
+my $curyear = $data{year}+1900;
+print "$curmon-$curday-$curyear";
+<>;

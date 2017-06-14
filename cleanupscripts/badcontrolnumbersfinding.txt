@@ -1,0 +1,57 @@
+#!perl
+
+=head2 Name and Description
+
+Bad control numbers finding.
+
+Takes file of control numbers and spits out file of control numbers with extra spaces at the end.
+
+Modify to spit out control numbers not ending with a single space.
+
+=cut
+
+###############################
+###############################
+use MARC::BBMARC;
+
+print "Input file:";
+my $extractedinputfile = <>;
+chomp $extractedinputfile;
+$extractedinputfile =~ s/^\"(.*)\"$/$1/;
+print "What field are these from?";
+my $fieldextracted = <>;
+chomp $fieldextracted;
+$fieldextracted =~ s/^\"(.*)\"$/$1/;
+print "Output file for bad control nos:";
+$extractedbadfields = <>;
+chomp $extractedbadfields;
+$extractedbadfields =~ s/^\"(.*)\"$/$1/;
+
+open (EXTRACTEDFILE, "<$extractedinputfile") or die "cannot open controlnofile";
+open (BADOUTPUTFILE, ">$extractedbadfields") or die "can't open badoutput";
+
+my $runningrecordcount=0;
+
+#read line from file
+while (my $line = <EXTRACTEDFILE>){
+### remove counts before field data
+$line =~ s/^[\d]+?\t//;
+### remove trailing tabs
+$line =~ s/\t\t\s*$//;
+###Find oddities (control numbers only)
+if ($fieldextracted eq '001') {
+if ($line =~ m/\d\s\s+$/) {print BADOUTPUTFILE ("$line\n");}
+if ($line !~ m/\d\s$/) {print "$line\n";}
+} #if control number is type
+
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+
+} #while
+close EXTRACTEDFILE;
+close OUTPUTFILE;
+close BADOUTPUTFILE;
+
+print "\n\nPress Enter to quit";
+<>;
+

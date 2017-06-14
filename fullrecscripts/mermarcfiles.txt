@@ -1,0 +1,196 @@
+#!perl
+
+=head1 Name
+
+Merge MARC files -- script to merge two USMARC-format files into one.
+
+=head2 Outline
+
+Reads file name from input line for updated records. 
+Reads file name from input line for file of deleted control numbers.
+Reads file name from input line for base records. 
+Reads input line for name of output file.
+Spits out merged file, with updated records added at end.
+
+=head2 Description
+
+The first file, the updated records file, is read, and each record's control number is added to a comparison array.
+The second file, the deleted control number file, contains one control number on each line, and is used for skipping records that are not wanted in the merged file. These control numbers are added to the comparison array.
+The third file, the base records file, contains the records that will be added to the merged file, unless the base record's control number matches a control number in the comparison array.
+The final file, the merged file contains the base file's records, minus any with a control number matching something in the comparison array, followed by everything in the updated records file.
+
+=head2 To Do
+
+Reduce the need for a deleted control number file by adding a conditional check.
+
+
+=cut
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict 'vars';
+use MARC::File::USMARC;
+use MARC::BBMARC;
+
+##Time coding to wrap around program to determine how long execution takes:
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+# (could also do by subtracting 2 gettimeofday return values)
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+# do bunch of stuff here
+#########################
+### Start main program ##
+#########################
+
+print ("\n\nWelcome to the MARC file merge program\n");
+#prompt for updated file, used for outputing raw
+print ("What is the updated file (newest records)?:");
+my $inputfile=<>;
+chomp $inputfile;
+## remove quotes around dropped in file name for DOS
+$inputfile =~ s/^\"(.*)\"$/$1/;
+#### will prompt again for input file
+#### that file will be used to build the comparison array
+my @controlnostocheck = MARC::BBMARC::updated_record_array($inputfile);
+print ("Deleted file may be Deletedcontrols.txt\n");
+my @deletednos = MARC::BBMARC::read_controlnos();
+push (@controlnostocheck, @deletednos);
+##my $deletedcount = (scalar @deletednos);
+
+#read command line for name of base file
+print ("Base record file:");
+my $basefile=<>;
+chomp $basefile;
+$basefile =~ s/^\"(.*)\"$/$1/;
+print ("Export record file:");
+#read command line for name of export file
+my $exportfile= <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+
+open(OUTRAW, ">$exportfile") or die "cannot open outraw";
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+
+#initialize $origrawfile as new usmarc file object
+my $origrawfile = MARC::File::USMARC->in( "$basefile" );
+
+#initialize $classref as ref to USMARC package
+my $classref = MARC::File::USMARC;
+
+#initialize $origdecodedfile as new usmarc file object
+my $origdecodedfile = MARC::File::USMARC->in( "$basefile" );
+
+#initialize $updatedrawfile as new usmarc file object
+my $updatedrawfile = MARC::File::USMARC->in( "$inputfile" );
+
+#######################################################
+#### Insert code here to push controlnos onto      ####
+#### @controlnostocheck, from file of control nos. ####
+#### Call subroutine to populate array of          ####
+#### additional control nos.                       ####
+#######################################################
+
+#create local script-based record counter
+my $reccount=0;
+my $updatedcount=0;
+#loop through input files, set $origmarc to base raw records
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+
+while ( my $origmarc = $origrawfile->skipget() ) {
+
+
+#within loop, set $origrecord to decoded version of base records
+my $origrecord = $origdecodedfile->next(); 
+
+#get the control number of the decoded base record
+my $origcontrolno = $origrecord->field('001')->as_string();
+
+my @grepcontrolno = grep {$_ eq $origcontrolno} @controlnostocheck;
+
+### if record hasn't been updated, output it ###
+unless (@grepcontrolno) {
+##################################
+### output original raw record ###
+##################################
+print OUTRAW ($origmarc);
+$reccount++;
+}
+else {
+#####################################
+### print ("skipped original\n"); ###
+#####################################
+$updatedcount++;
+##clear grep array
+@grepcontrolno = ();
+}
+###### print if count mods with constant in BBMARC #####
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+} #while origrecprint
+
+my $newupdcount=0;
+while ( my $updatedrawrec = $updatedrawfile->skipget() ) {
+####################################################
+# append updated records to end of new output file #
+####################################################
+print OUTRAW ($updatedrawrec);
+$reccount++;
+$newupdcount++;
+MARC::BBMARC::counting_print ($reccount);
+} #while updatedrecprint
+
+print ("$reccount records exported\n$updatedcount records updated\n");
+print ("$newupdcount records in updated record file");
+close OUTRAW;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+print "\n\nPress Enter to quit";
+<>;
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

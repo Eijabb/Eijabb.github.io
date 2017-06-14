@@ -1,0 +1,50 @@
+#!perl
+
+=head2 Description
+
+Input should be the result of extract specific subfields script.
+Output is same field, without count, tag number, indicators, or first subfield code.
+
+=cut
+
+print "Input file: ";
+$inputfile = <>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print "Export file: ";
+$exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+
+open (IN, "<$inputfile") || die ("can't open in");
+open (OUT, ">$exportfile") || die ("can't open out");
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+my $linecount = 0;
+
+#read lines from input file
+while (my $line = <IN>) {
+chomp $line;
+#give user notification that program is working 
+if ($linecount%1000 == 0) {print "passing $linecount\n";}
+
+#remove extra spaces placed between subfields
+#(a side effect of the fieldextraction.pl script)
+$line =~ s/\t\s{7}\@/\t\@/g;
+#remove count, tab, 3 digit tagno, space, ind1, ind2,
+#space, subfield indicator, subfield code, and tab
+$line =~ s/^\d+?\t//;
+
+print OUT ("$line\n");
+
+$linecount++;
+
+}
+close IN;
+close OUT;
+print "$linecount lines cleaned\n";
+print "Press Enter to quit";
+<>;
+

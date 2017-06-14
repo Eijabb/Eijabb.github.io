@@ -1,0 +1,8 @@
+bin/lintallchecks.pl
+Changes
+INSTALL.txt
+lib/MARC/Lintadditions.pm
+Makefile.PL
+MANIFEST
+README.txt
+test.pl

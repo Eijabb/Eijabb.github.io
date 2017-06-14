@@ -1,0 +1,26 @@
+MARC::Global_Replace
+===========
+
+MARC::Global_Replace -- Module developed to take a file of old_tags, old_hdgs, new_tags, new_hdgs, and thesaurus, process a file of MARC records, and replace old headings with new headings.
+
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+DEPENDENCIES
+
+- MARC::Record
+
+COPYRIGHT AND LICENCE
+
+This software is free software and may be distributed under the same
+terms as Perl itself.
+
+Copyright (C) 2005  Bryan Baldus
+

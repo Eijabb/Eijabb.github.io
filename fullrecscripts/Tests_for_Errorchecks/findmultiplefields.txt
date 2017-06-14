@@ -1,0 +1,101 @@
+#!perl
+
+=head2 Description
+
+Manual check 007s
+
+Scans through a file of records and outputs control number of records having multiple occurances of a specified field.
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+use MARC::BBMARC;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Find Multiple Fields\n");
+
+##### File handling initialization ######
+#prompt for updated file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file (list of control nos)? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile");
+
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+my $visualizecount = 0;
+my $badbytecount = 0;
+###################################################
+#prompt for field to count
+print ("Enter three-digit tag number to count: ");
+my $extractfieldnumber = MARC::BBMARC::getthreedigits();
+chomp $extractfieldnumber;
+
+#initialize count of found records 
+my $foundcount = 0;
+
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+my $fieldcount = 0;
+my $controlno = $record->field('001')->as_string();
+foreach my $field ($record->field($extractfieldnumber)) {
+$fieldcount++;
+}
+if ($fieldcount > 1) {print OUT ("$controlno\t$fieldcount\n");
+$foundcount++}
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} # while
+
+close $inputfile;
+close OUT;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+print "$foundcount recs\n";
+
+print "\n\nPress Enter to quit";
+<>;
+#####################
+### END OF PROGRAM ##
+#####################

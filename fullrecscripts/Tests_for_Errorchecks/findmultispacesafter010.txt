@@ -1,0 +1,144 @@
+#!perl
+
+=head2 NAME
+
+Find Multiple Spaces after 010 field
+
+=head2 DESCRIPTION
+
+Looks for more than one space within subfields after 010.
+Reports controlno\tttag\tsubfield.
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+use MARC::BBMARC;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Find Multiple Spaces after 010 field\n");
+
+##### File handling initialization ######
+#prompt for input file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile");
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+my $fieldcount = 0;
+my $recordcount = 0;
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+#get all fields in record
+my @fields = $record->fields();
+my $controlno = $record->field('001')->as_string();
+my $subhasspaces = 0;
+foreach my $field (@fields) {
+#skip tags lower than 011
+next if ($field->tag() <= 10);
+my @subfields = $field->subfields();
+my @newsubfields = ();
+
+#break subfields into code-data array (so the entire field is in one array)
+while (my $subfield = pop(@subfields)) {
+my ($code, $data) = @$subfield;
+unshift (@newsubfields, $code, $data);
+} # while
+
+#examine data portion of each subfield
+for (my $index = 1; $index <=$#newsubfields; $index+=2) {
+my $subdata = $newsubfields[$index];
+#report subfield data with more than one space
+if ($subdata =~ /  +/) {print OUT "$controlno\t", $field->tag(), "\t$subdata has multiple spaces\n";
+$fieldcount++;
+$subhasspaces = 1;
+} #if has multiple spaces
+} #for each subfield
+} #for each field
+$recordcount++ if ($subhasspaces);
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} # while
+print "$fieldcount fields have multiple spaces\n$recordcount records have subfields with multiple spaces.\n";
+close $inputfile;
+close OUT;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+print "\n\nPress Enter to quit";
+<>;
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

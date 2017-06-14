@@ -1,0 +1,124 @@
+#!/usr/bin/perl
+=head1 Name
+
+Split MARC file -- divides file of MARC records into multiple files, 
+limiting each to less than 150 records.
+
+=head2 Outline
+
+Reads file name from input line for base file of MARC records. 
+Reads input line for name of output file (MARC format).
+Spits out MARC records
+Prompts for new export filename after every 150 records. 
+
+=head2 TO DO
+
+=cut
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict 'vars';
+use MARC::Batch;
+use MARC::BBMARC;
+
+##Time coding to wrap around program to determine how long execution takes:
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+# (could also do by subtracting 2 gettimeofday return values)
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+# do bunch of stuff here
+#########################
+### Start main program ##
+#########################
+
+print ("\n\nWelcome to the Split MARC file script\n");
+## function call will prompt for filename of control number file
+
+#read command line for name of base file
+print ("Base record file:");
+my $basefile=<>;
+chomp $basefile;
+## remove quotes around dropped in file name for DOS
+$basefile =~ s/^\"(.*)\"$/$1/;
+print ("Export record file:");
+#read command line for name of export file
+my $exportfile= <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+
+open(OUTRAW, ">$exportfile") or die "cannot open outraw";
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+#initialize $batch as new batch object
+my $batch = MARC::Batch->new('USMARC', "$basefile");
+
+#create local script-based record counter
+my $reccount=0;
+my $extractedcount=0;
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+
+while ( my $record = $batch->next()) {
+
+##################################
+### output MARC record ###
+##################################
+print OUTRAW ($record->as_usmarc());
+$extractedcount++;
+#every 150 records, create new output file
+if ($extractedcount%150 == 0) {
+close OUTRAW;
+print ("New export record file:");
+#read command line for name of export file
+my $exportfile= <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUTRAW, ">$exportfile") or die "cannot open new outraw";
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+} #if mod 150
+
+###### print if count mods with constant in BBMARC #####
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+} #while 
+
+print ("$extractedcount records extracted\n");
+close OUTRAW;
+
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+print "\n\nPress Enter to quit";
+<>;
+
+#####################
+### END OF PROGRAM ##
+#####################

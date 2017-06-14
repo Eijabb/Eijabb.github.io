@@ -1,0 +1,151 @@
+#!perl
+
+=head2 Description
+
+Reads file name from input line (MacPerl running window) for updated records. 
+Reads file name from input line for deleted controlnos.
+Reads file name from input line for base records. 
+Reads input line for name of output file. 
+Spits out list of control numbers that have been updated. 
+Based on mergedmarcfiles script.
+Updated to work with MARC::BBMARC
+
+=cut
+
+########################
+### Program template ###
+########################
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict 'vars';
+use MARC::File::USMARC;
+use MARC::BBMARC;
+
+##Time coding to wrap around program to determine how long execution takes:
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+# (could also do by subtracting 2 gettimeofday return values)
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+# do bunch of stuff here
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Has Been Updated? script\n");
+
+#prompt for updated file
+print ("What is the updated file?: ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+#### will prompt again for input file
+#### that file will be used to build the comparison array
+my @controlnostocheck = MARC::BBMARC::updated_record_array($inputfile);
+print ("Deleted file may be Deletedcontrols.txt\n");
+my @deletednos = MARC::BBMARC::read_controlnos();
+push (@controlnostocheck, @deletednos);
+my $deletedcount = (scalar @deletednos);
+
+
+#read command line for name of base file
+print ("Base record file: ");
+my $basefile=<>;
+chomp $basefile;
+$basefile =~ s/^\"(.*)\"$/$1/;
+print ("Export record file: ");
+#read command line for name of export file
+my $exportfile= <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(UPDATEDCONTROLS, ">$exportfile") or die "cannot open updatedcontrols";
+
+#initialize $origrawfile as new usmarc file object
+my $origrawfile = MARC::File::USMARC->in( "$basefile" );
+
+#initialize $classref as ref to USMARC package
+my $classref = MARC::File::USMARC;
+
+#initialize $origdecodedfile as new usmarc file object
+my $origdecodedfile = MARC::File::USMARC->in( "$basefile" );
+
+#initialize $updatedrawfile as new usmarc file object
+my $updatedrawfile = MARC::File::USMARC->in( "$inputfile" );
+
+#create local script-based record counter
+
+my $updatedcount=0;
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+#############################################
+#loop through input files, set $origmarc to base raw records
+
+while ( my $origmarc = $origrawfile->skipget() ) {
+
+
+#within loop, set $origrecord to decoded version of base records
+my $origrecord = $origdecodedfile->next(); 
+
+#get the control number of the decoded base record
+my $origcontrolno = $origrecord->field('001')->as_string();
+my $rectitle = $origrecord->field('245')->subfield('a');
+
+##look for control number common to both files
+my @grepcontrolno = grep {$_ eq $origcontrolno} @controlnostocheck;
+
+###Perform action based on records common or not to the files
+###for hasbeenupdated, if the updated record occurs,
+### print its control number. If not, then ignore the base record.
+if (@grepcontrolno) {
+print ("$origcontrolno\t$rectitle\n");
+print UPDATEDCONTROLS ("$origcontrolno\t$rectitle\n");
+$updatedcount++;
+}
+else {
+#print ("\n");
+}
+#####################################
+## Place the following within loop ##
+#####################################
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+
+} #while origrecprint
+
+print ("\n$updatedcount records updated\n");
+
+close UPDATEDCONTROLS;
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+print "\n\nPress Enter to quit";
+<>;
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+########################
+########################
+########################

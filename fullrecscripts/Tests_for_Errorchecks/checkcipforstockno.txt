@@ -1,0 +1,163 @@
+#!perl
+
+=head2 NAME
+
+Check CIP for stockno and vice versa
+
+=head2 DESCRIPTION
+
+Checks record coded level "8" for data in $a of 037.
+Reports records with such data.
+Checks records not coded level "8" for absence of 037$a data.
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+use MARC::BBMARC;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Check CIP for Stock Number\n");
+
+##### File handling initialization ######
+#prompt for input file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile");
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+#initialize $infile as new usmarc file object
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+my $errorcount = 0;
+my $errors = "";
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+my $controlno = $record->field('001');
+my $leader = $record->leader();
+my $controlno = $record->field('001')->as_string();
+my $mattype = substr($leader, 6, 1); 
+my $encodelvl = substr($leader, 17, 1);
+
+my $stockno;
+
+if ($encodelvl =~ /^8$/) {
+## check for miscoded record (has stocknumber but is coded 8)
+if (
+($record->field('037')) && ($record->field('037')->subfield('a'))
+) {
+$stockno = $record->field('037')->subfield('a');
+ if ($stockno) {
+$errors .= "$controlno\thas stock number $stockno but is coded CIP\n";
+$errorcount++;
+} # has stockno
+} # has 037$a
+
+#make sure CIP has 263
+unless ($record->field('263')) {$errors .= "$controlno\tis coded as CIP but has no 263\n";
+$errorcount++;
+} # unless has '263' field
+} #if coded lvl8
+
+#if coded as full needs stockno
+elsif($encodelvl =~ /^ $/) {
+#make sure 037$a exists
+if (
+($record->field('037')) && ($record->field('037')->subfield('a'))
+) {
+$stockno = $record->field('037')->subfield('a');
+#report error if $stockno has no digits
+unless ($stockno =~ /\d/) {
+$errors .= "$controlno\thas no stock number but is coded Full\n";
+$errorcount++;
+} # has no stockno
+} # has 037$a
+else {$errors .= "$controlno\thas no 037 field\n"; $errorcount++;}
+}
+#otherwise, not coded cip or full
+else {$errors.="$controlno\tIs coded level $encodelvl.\n"; $errorcount++;}
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} # while
+print OUT "$errors\n";
+close $inputfile;
+close OUT;
+print "$errorcount errors found\n";
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+print "\n\nPress Enter to quit";
+<>;
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

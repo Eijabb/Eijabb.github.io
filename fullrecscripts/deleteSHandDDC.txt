@@ -1,0 +1,262 @@
+#!perl
+
+=head2
+
+Delete SH and DDC -- Script for removing designated subject headings and Dewey numbers.
+
+Prompts for input and export files (MARC format), creates an error txt file (currently of limited use).
+Prompts for which headings and Deweys to delete.
+Then deletes the selections.
+
+Limited to 082 DDCs, which must have a first indicator.
+
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use warnings;
+use MARC::Batch;
+use MARC::BBMARC;
+use MARC::QBI::Misc;
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Delete SH and DDC script\n");
+
+###########################################
+###### File handling initialization #######
+###########################################
+
+#declare array to store file names
+my @file_names = ();
+#prompt for input file
+my $inputfile_message = "What is the input file? (MARC format) ";
+#call get_file_name for the input file
+my ($inputfile, $error) = MARC::QBI::Misc::get_file_name($inputfile_message, '<');
+die "Error with input file name" if $error;
+push @file_names, $inputfile if $inputfile;
+
+my $outputfile_message = "What is the export file? (MARC format) ";
+my ($exportfile, $error2) = MARC::QBI::Misc::get_file_name($outputfile_message, '>', \@file_names);
+die "Error with export file name" if $error2;
+push @file_names, $exportfile if $exportfile;
+open(OUT, ">$exportfile") or die "Can not open $exportfile, $!";
+
+my $exporterrstxtfile = $exportfile.".errs.txt";
+#remove trailing '.mrc.errs.txt' and replace with just 'errs.txt'
+$exporterrstxtfile =~ s/(?:\.mrc)?(\.errs\.txt)$/$1/i;
+
+#protect against overwriting files above
+$exporterrstxtfile = MARC::QBI::Misc::file_name_exists($exporterrstxtfile, \@file_names);
+push @file_names, $exporterrstxtfile if $exporterrstxtfile;
+die unless $exporterrstxtfile; #die shouldn't be necessary, but just in case
+
+#check to see if error text file exists
+if (-f $exporterrstxtfile) {
+	my $message = "That file, $exporterrstxtfile exists already.\nOverwrite? ";
+	my $continue = MARC::QBI::Misc::boolean_prompt($message);
+	unless ($continue) {
+		#exit program if user typed anything other than y or yes (in any cap)
+		die;
+	}
+}
+
+open(OUTERRSTXT, ">$exporterrstxtfile") or die "Can not open $exporterrstxtfile, $!";
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exporterrstxtfile);
+}
+###########################################
+#### End File handling initialization #####
+###########################################
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+
+#get Dewey and SH options
+my $dewey_selected = MARC::QBI::Misc::select_dewey();
+my %SH_to_delete = %{MARC::QBI::Misc::select_SH()};
+
+=head2 outline of %SH_to_delete
+
+#if all options are entered:
+%SH_to_delete = (
+	'0' => '1',
+	'1' => '1',
+	'2' => '1',
+	'4' => '1',
+	'7' => {'all' => '1', 'gsafd' => '1', 'sears' => '1'}
+)
+
+=cut
+
+
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+my $recordchangedcount = 0;
+my $errorcount = 0;
+
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+	my $recordchanged = 0;
+
+	
+	my $controlno = $record->field('001')->as_string() if $record->field('001');
+	die "Could not find 001 field\n" unless $controlno;
+	my @errors_to_return = ();
+
+	######################
+	### Dewey Deletion ###
+	######################
+	#get all 082 fields
+	my @deweys = $record->field('082');
+	#full deweys have 1st ind. '0'
+	my @full082 = grep {$_->indicator(1) eq '0'} @deweys;
+	#abridged deweys have 1st ind. '1'
+	my @abridged082 = grep {$_->indicator(1) eq '1'} @deweys;
+	#get others just in case indicators are broken
+	my @other082 = grep {$_->indicator(1) !~ /^[01]$/} @deweys;
+
+	push @errors_to_return, join "\t", ($controlno, "has invalid Dewey 1st indicator") if (@other082);
+
+	if ($dewey_selected eq '0') {
+		$recordchanged += $record->delete_field(@full082);
+	} #delete full
+	elsif ($dewey_selected eq '1') {
+		$recordchanged += $record->delete_field(@abridged082);
+	} #delete abridged
+	elsif ($dewey_selected eq '') {
+		#skipped dewey deletion
+	}
+	else {
+		print "Something went wrong selecting Dewey to delete\nQuitting now\n"; die;
+	} #invalid selection?
+
+
+
+	#######################
+	
+	########################
+	### Subject Deletion ###
+	########################
+	#get all 6xx fields
+	my @subjectheadings = $record->field('6..');
+	#separate SH into LC, LCAC, and Sears
+	my @lcsh = grep {$_->indicator(2) eq '0'} @subjectheadings;
+	my @lcac = grep {$_->indicator(2) eq '1'} @subjectheadings;
+	my @sears = grep {($_->indicator(2) eq '7') && (($_->subfield('2'))&& ($_->subfield('2') eq 'sears'))} @subjectheadings;
+
+	####@SH_to_delete has list of thesauri to delete
+	if ($SH_to_delete{'0'}) {
+		foreach (@lcsh) {
+			$recordchanged += $record->delete_field($_);
+		} #foreach LCSH heading to delete
+	} #if deleting LCSH
+	if ($SH_to_delete{'1'}) {
+		foreach (@lcac) {
+			$recordchanged += $record->delete_field($_);
+		} #foreach LCAC heading to delete
+	} #if deleting LCAC
+	if ($SH_to_delete{'2'}) {
+		foreach (grep {$_->indicator(2) eq '2'} @subjectheadings) {
+			$recordchanged += $record->delete_field($_);
+		} #foreach MeSH heading to delete
+	} #if deleting MeSH
+	if ($SH_to_delete{'4'}) {
+		foreach (grep {$_->indicator(2) eq '4'} @subjectheadings) {
+			$recordchanged += $record->delete_field($_);
+		} #foreach other ('4') heading to delete
+	} #if deleting Other('4')
+	if ($SH_to_delete{'7'}) {
+		if ($SH_to_delete{'7'}{'all'}) {
+			foreach (grep {$_->indicator(2) eq '7'} @subjectheadings) {
+				$recordchanged += $record->delete_field($_);
+			} #foreach 2nd ind. '7' heading to delete
+		} #if all SH with 2nd ind. 7 are to be deleted
+		if ($SH_to_delete{'7'}{'gsafd'}) {
+			foreach (grep {($_->indicator(2) eq '7') && (($_->subfield('2'))&& ($_->subfield('2') eq 'gsafd'))} @subjectheadings) {
+				$recordchanged += $record->delete_field($_);
+			} #foreach GSAFD heading to delete
+		} #if deleting GSAFD
+		if ($SH_to_delete{'7'}{'sears'}) {
+			foreach (@sears) {
+				$recordchanged += $record->delete_field($_);
+			} #foreach Sears heading to delete
+		} #if deleting Sears
+	} #if at least one thesaurus with 2nd ind. '7' was selected for deletion
+
+print OUT $record->as_usmarc();
+$recordchangedcount++ if $recordchanged;
+print OUTERRSTXT (join "\t", @errors_to_return), "\n" if @errors_to_return;
+$errorcount++ if @errors_to_return;
+
+} # while
+
+close $inputfile;
+close OUT;
+close OUTERRSTXT;
+
+print "$recordchangedcount records changed\n$runningrecordcount records scanned\n$errorcount records found with errors\n";
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+END{print "Press Enter to quit"; <>;}
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

@@ -1,0 +1,58 @@
+#!perl
+
+=head2 NAME
+
+Find bad 043 -- looks through output file for lines without 7-character 043 subfields.
+
+=head2
+
+Input file should be result (export file) from fieldextraction.pl or similar file.
+Output file is list of lines with subfields longer or shorter than 7 characters.
+
+=cut 
+
+print "Input file: ";
+$inputfile = <>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print "Export file: ";
+$exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+
+open (IN, "<$inputfile") || die ("can't open in");
+open (OUT, ">$exportfile") || die ("can't open out");
+my $linecount = 0;
+while (my $line = <IN>) {
+chomp $line;
+#remove extra spaces between tabs
+$line =~ s/\t\s{7}\@/\t\@/g;
+#remove count, tag, and first subfield code
+$line =~ s/^\d+?\t\d{3}\s[ \d][ \d]\s\@\w\t//;
+my @linearray = split ("\t\t", $line);
+#my @controls = $linearray[1];
+my @linesubfields = split (\t, $linearray[0]);
+
+foreach $linesubfield (@linesubfields) {
+#subfield code--make sure it's subfield 'a'
+if (($linesubfield =~ /\@/) && ($linesubfield !~ /\@a/)) 
+{print OUT "$line\n";
+$linecount++;
+print "im in codes\n";
+}
+#subfield data
+else {
+unless ($linesubfield =~ /[\w-]{7}/) {
+print OUT "$line\n";
+print "Im in data\n";
+$linecount++;
+}
+}
+} #foreach subfield and subfield code
+}
+close IN;
+close OUT;
+print "$linecount lines identified\n";
+print "Press Enter to quit";
+<>;
+

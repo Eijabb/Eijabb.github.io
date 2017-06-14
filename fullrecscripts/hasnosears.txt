@@ -1,0 +1,166 @@
+#!perl
+
+=head2 Has No Sears
+
+Reports which records have sears (counts).
+Prints out 1 file, records with no Sears SH. 
+
+=head2 KNOWN PROBLEMS
+
+May crash if 2nd indicator is 7 but subfield 2 does not exist.
+This should not be the case for the records this script is used on--those from Macola, which should have passed the lintallchecksQBI.pl checks.
+
+File naming on Mac could be improved by safety checks on length of name. Workaround is not supplying names that are too long.
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use warnings;
+use MARC::Batch;
+use MARC::BBMARC;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to the Has No Sears script\n");
+
+##### File handling initialization ######
+#prompt for input file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+#print ("What is the export file for records with Sears?\n");
+#print ("Note: This name will be used for both the .txt and the .mrc of records with Sears: ");
+#my $exportfile = <>;
+#chomp $exportfile;
+#$exportfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file for records without sears? ");
+my $exportfilenosears = <>;
+chomp $exportfilenosears;
+$exportfilenosears =~ s/^\"(.*)\"$/$1/;
+
+#cleanup the filenames
+#$exportfile .= '.txt' unless $exportfile =~ /\.txt$/;
+
+#append '.mrc' to export file for raw MARC of records with Sears
+#my $exportmarcwithsears = $exportfile.'.mrc';
+#remove .txt before .mrc
+#$exportmarcwithsears =~ s/\.txt\.mrc/\.mrc/i;
+
+#append .mrc to non-Sears file
+$exportfilenosears .= '.mrc' unless $exportfilenosears =~ /\.mrc$/i;
+
+#open(OUTTXT, ">$exportfile") or die "Can not open $exportfile, $!";
+#open(OUTMARCSEARS, ">$exportmarcwithsears") or die "Can not open $exportmarcwithsears, $!";
+
+open(OUTNOSEARS, ">$exportfilenosears") or die "Can not open $exportfilenosears, $!";
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+#MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+#MacPerl::SetFileInfo('R*ch', 'TEXT', $exportmarcwithsears);
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfilenosears);
+
+}
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+my $hassearscount = 0;
+my $nosearscount = 0;
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+	my $controlno = $record->field('001')->as_string();
+	my $title = $record->field('245')->subfield('a');
+	my @subjects = $record->field('6..');
+	my $hassears = 0;
+	#account for works with no SH
+	unless (@subjects) {
+		print $controlno, "\t", $title, "\thas no subject headings.\n";
+		$hassears = 1;
+	}
+	foreach my $subject (@subjects) {
+		$hassears++ if (($subject->indicator(2) == 7) && ($subject->subfield('2') eq 'sears'));
+		last if $hassears; 
+	}
+	if ($hassears) {
+		#print OUTTXT "$controlno\t$title\tHAS SEARS\n";
+		$hassearscount++;
+		#print OUTMARCSEARS $record->as_usmarc();
+	}
+	else {
+		print OUTNOSEARS $record->as_usmarc();
+		$nosearscount++;
+	}
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} # while
+
+print "$hassearscount records have Sears\n";
+print "$nosearscount records do not have Sears\n";
+print "$runningrecordcount records scanned\n";
+close $inputfile;
+#close OUTTXT;
+#close OUTMARCSEARS;
+close OUTNOSEARS;
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+
+print "\n\nPress Enter to quit";
+<>;
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

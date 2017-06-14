@@ -1,0 +1,166 @@
+#!perl
+
+=head2 Description
+
+Raw and Decoded Scan -- used for finding basic coding problems in MARC records.
+Specifically, empty fields (and indicators forced to blanks).
+
+Prompts for file name from command line for input.
+Spits out two files. One contains unchanged problem records.
+The other contains the text of the error and the control number of the problem records.
+
+Depends upon MARC::Record warnings, such as forcing indicators to blanks.
+
+=head2 TO DO
+
+Remove second output file, of control nos only, since that can be generated based on the first file.
+Also because the number of problems is hopefully small enough to be dealt with manually.
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Raw and Decoded Scan\n");
+
+use MARC::File::USMARC;
+use MARC::Batch;
+use MARC::BBMARC;
+
+#read command line for name of input file
+print ("What is the input file? ");
+$inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+
+#get name of error file
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+#get name of file for warning text and control number
+print ("What is the warnings text file? ");
+my $controlnowerrors = <>;
+chomp $controlnowerrors;
+$controlnowerrors =~ s/^\"(.*)\"$/$1/;
+
+open(OUTRAW, ">$exportfile") or die "cannot open outraw (error file)";
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+open(CONTROLNOERRORSOUT, ">$controlnowerrors")  or die "cannot open controlnoerrorsout (warnings file)";
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $controlnowerrors);
+}
+
+
+#initialize $rawfile as new usmarc file object
+my $rawfile = MARC::File::USMARC->in( "$inputfile" );
+
+#initialize $classref as ref to USMARC package
+my $classref = MARC::File::USMARC;
+
+#initialize $decodedfile as new usmarc file object
+my $decodedfile = MARC::File::USMARC->in( "$inputfile" );
+
+#create local script-based record counter
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+#### Start while loop through records in file #####
+my $reccount=0;
+
+#loop through input files, set $marc to raw records
+while ( my $marc = $rawfile->MARC::BBMARC::skipget() ) {
+    $reccount++;
+
+    #within loop, set $record decoded version of records
+    my $record = $decodedfile->next(); 
+
+    #get the control number of the decoded record
+    my $controlno = '';
+    if ($record->field('001')) {
+        $controlno = $record->field('001')->as_string();
+;
+    } #if 001 present
+    #manually decode raw records to find warnings
+    my $mandecoded = $classref->decode($marc);
+
+#look for warnings and print them
+if (@mywarnings = $mandecoded->warnings())
+{#print join (" ", "warnings:", @mywarnings, "\n");
+##below, $marc is raw, $mandecoded is same record,
+##with certain errors corrected (indicators set to blank, etc.)
+#print ("Record number: $reccount\n", $controlno, "\n");
+print OUTRAW ($marc);
+print CONTROLNOERRORSOUT join ("\t", $controlno, "warnings:", @mywarnings), "\n";
+}
+
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} #while
+
+close OUTRAW;
+close CONTROLNOERRORSOUT;
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print "\n";
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+print "Press Enter to continue";
+<>;
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

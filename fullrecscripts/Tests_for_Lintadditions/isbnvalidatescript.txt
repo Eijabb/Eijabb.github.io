@@ -1,0 +1,173 @@
+#!perl
+
+=head2 DESCRIPTION
+
+Script (to be turned into subroutine) for validating 020s.
+Looks at 020$a and reports errors if the check digit is wrong.
+Looks at 020$z and validates number if hyphens are present.
+
+Uses Business::ISBN to do validation.
+
+=head2 TO DO
+
+Use this script to output invalid 020$a as 020$z.
+
+Update for $y if that is added to MARC21
+
+Fix 13-digit ISBN checking.
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+use MARC::BBMARC;
+use Business::ISBN;
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to 020 validation script\n");
+
+##### File handling initialization ######
+#prompt for input file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile");
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+my @warningstoreturn = ();
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+	my $controlno = $record->field('001')->as_string();
+	my @fields020 = $record->field('020');
+	foreach my $field020 (@fields020) {
+
+# break subfields into code-data array and validate data
+
+		my @subfields = $field020->subfields();
+
+		while (my $subfield = pop(@subfields)) {
+			my ($code, $data) = @$subfield;
+			my $isbnno = $data;
+#remove any hyphens
+				$isbnno =~ s/\-//g;
+#remove nondigits
+				$isbnno =~ s/^\D*(\d{9,12}[X\d])\b.*$/$1/;
+
+#report error if this is subfield 'a' 
+#and the first 10 or 13 characters are not a match for $isbnno
+ 				if (($code eq 'a') && (substr($data,0,length($isbnno)) ne $isbnno)) {
+					push @warningstoreturn, ("$controlno\t020: Subfield a may have invalid characters, $data");
+}
+
+#report error if unable to find 10-13 digit string of digits in subfield 'a'
+				if (($code eq 'a') && ($isbnno !~ /^(\d{10})|(\d{13})|(\d{9}X)|(\d{12}X)$/)) {
+					push @warningstoreturn, ("$controlno\t020: Subfield a has the wrong number of digits, $data"); next;
+				} # if subfield 'a' but not 10 or 13 digit isbn
+				elsif ($code eq 'a') {
+					if ((length ($isbnno) == 10) && (Business::ISBN::is_valid_checksum($isbnno) != 1)) {
+						push @warningstoreturn, ("$controlno\t020: Subfield a has bad checksum, $data"); next;
+					} #if 10 digit ISBN has invalid check digit
+					elsif (length ($isbnno == 13) && (#check for ean validity, for 13 digit ISBN
+)){
+						push @warningstoreturn, ("$controlno\t020: Subfield a has bad checksum, $data"); next;
+					} #if 13 digit ISBN has invalid check digit
+###################################################
+			} #elsif subfield 'a'
+#look for valid isbn in 020$z
+			elsif ($code eq 'z') {
+				if (($data =~ /^ISBN/) || ($data =~ /^\d*\-\d+/)){
+					push @warningstoreturn, ("$controlno\t020: Subfield z is numerically valid, $data") if ((length ($isbnno) == 10) && (Business::ISBN::is_valid_checksum($isbnno) == 1)); next;
+				} #if 10 digit ISBN has invalid check digit
+} #elsif subfield 'z'
+			
+		} # while @subfields
+	} #foreach $field020
+
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} # while
+
+print OUT join "\n", @warningstoreturn;
+print scalar @warningstoreturn, " errors found\n";
+
+close $inputfile;
+close OUT;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+print "\n\nPress Enter to quit";
+<>;
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

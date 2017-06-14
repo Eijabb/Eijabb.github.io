@@ -1,0 +1,248 @@
+#!perl
+
+=head2
+
+Extract by stock or ISBN--given a file of stock_numbers and ISBNs (tab separated), and a file of MARC records, exports any MARC records with one of the matching stock_numbers (037a) or ISBNs (020a or 020z).
+Also exports a separate file of non-matches (for additional searching or dealing with).
+
+=head2 TO DO
+
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use warnings;
+use MARC::Batch;
+use MARC::BBMARC;
+
+#for finding the nonmatches
+use List::Compare;
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Extract by Stock Number or ISBN\n");
+
+###########################################
+###### File handling initialization #######
+###########################################
+
+#prompt for id numbers file
+print ("What is the file of stock numbers and ISBNs?");
+my $idnumbersfile=<>;
+chomp $idnumbersfile;
+$idnumbersfile =~ s/^\"(.*)\"$/$1/;
+
+#read lines from id numbers file into array
+my @id_no_lines = MARC::BBMARC::read_controlnos($idnumbersfile);
+
+#prompt for file of MARC records
+print ("What is the base MARC records file?");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export MARC file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+#protect against overwriting input file or id numbers file
+if (($inputfile =~ /^\Q$exportfile\E$/i) || ($idnumbersfile =~ /^\Q$exportfile\E$/i)) {
+	print "Input file and export file are identical.\nProgram will exit now. Press Enter to continue\n";
+	<>;
+	die;
+}
+#check to see if export file exists
+if (-f $exportfile) {
+	print "That file, $exportfile exists already.\nOverwrite? ";
+	my $continue = <>;
+	chomp $continue;
+	unless ($continue =~ /^y(es)?$/i) {
+	#exit program if user typed anything other than y or yes (in any cap)
+		print "Exiting (press Enter)\n"; <>; die;
+	}
+}
+open(OUT, ">$exportfile") or die "Can not open $exportfile, $!";
+
+######################################
+####### Get file for non-matches #####
+######################################
+print ("What is the export file of non-matches? ");
+my $nonmatchfile = <>;
+chomp $nonmatchfile;
+$nonmatchfile =~ s/^\"(.*)\"$/$1/;
+#protect against overwriting input file or id numbers file or exportfile
+if (($inputfile =~ /^\Q$nonmatchfile\E$/i) || ($idnumbersfile =~ /^\Q$nonmatchfile\E$/i) || ($exportfile =~ /^\Q$nonmatchfile\E$/i)) {
+	print "Non-match file and another file are identical.\nProgram will exit now. Press Enter to continue\n";
+	<>;
+	die;
+}
+#check to see if export file exists
+if (-f $nonmatchfile) {
+	print "That file, $nonmatchfile exists already.\nOverwrite? ";
+	my $continue = <>;
+	chomp $continue;
+	unless ($continue =~ /^y(es)?$/i) {
+	#exit program if user typed anything other than y or yes (in any cap)
+		print "Exiting (press Enter)\n"; <>; die;
+	}
+}
+open(NOMATCH, ">$nonmatchfile") or die "Can not open $nonmatchfile, $!";
+
+###################################
+
+
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+MacPerl::SetFileInfo('R*ch', 'TEXT', $nonmatchfile);
+}
+###########################################
+#### End File handling initialization #####
+###########################################
+
+#clean up id numbers array and build hash of stock numbers and isbns
+my %stock_nos;
+my %isbns;
+foreach my $id_no (@id_no_lines) {
+	#each $id_no should have $stockno\t$isbn (if the right file was given above)
+	my ($stockno_id, $isbn_id) = split "\t", $id_no;
+	$stock_nos{$stockno_id}++;
+	$isbns{$isbn_id}++;
+}
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+#declare scalar for count of extracted records
+my $recextractcount = 0;
+#declare array for found stock numbers
+my @found_stocknos = ();
+#### Start while loop through records in file #####
+while (my $record = $batch->next()) {
+	#get controlno for reporting
+	my $controlno = $record->field('001')->as_string();
+	#skip records with no stock number (such as PCIP)
+	next unless (($record->field('037')) && ($record->field('037')->subfield('a')));
+
+	my $stockno = $record->field('037')->subfield('a');
+	my @field_020s = $record->field('020');
+	my @rec_isbns = ();
+	foreach my $field_020 (@field_020s) {
+		if ($field_020->subfield('a')) {
+			my $rec_isbn = $field_020->subfield('a');
+			#remove all but the 10 or 13 digit ISBN number
+			$rec_isbn =~ s/^\D*(\d{9,12}[\dX])\D*.*$/$1/;
+			#add the isbn if it is between 10 and 13 digits
+			push @rec_isbns, ($rec_isbn) if ($rec_isbn =~ /^\d{10,13}$/);
+		} #if 020_a
+		elsif ($field_020->subfield('z')) {
+			my $rec_isbn = $field_020->subfield('z');
+			#remove all but the 10 or 13 digit ISBN number
+			$rec_isbn =~ s/^\D*(\d{9,12}[\dX])\D*.*$/$1/;
+			#add the isbn if it is between 10 and 13 digits
+			push @rec_isbns, ($rec_isbn) if ($rec_isbn =~ /^\d{10,13}$/);
+		} # if 020_z
+	} # foreach 020 field
+
+	#compare stock number and isbns with base id numbers
+	my $stocknofound = 1 if ($stock_nos{$stockno});
+
+	my $isbnfound = 0;
+	foreach my $isbn (@rec_isbns) {
+		$isbnfound = 1 if ($isbns{$isbn});
+	}
+	#print out matching records
+	if ($stocknofound || $isbnfound) {
+		print OUT $record->as_usmarc();
+		$recextractcount++;
+		push @found_stocknos, ($stockno);
+	}
+
+###################################################
+### add to count for user notification ###
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+###################################################
+} # while
+
+close $inputfile;
+close OUT;
+
+#get base list of stock numbers
+my @base_stocknos = keys %stock_nos;
+
+my $lc = List::Compare->new(\@base_stocknos, \@found_stocknos);
+
+#present in first file but not in second
+my @nonmatches = $lc->get_unique;
+
+#print the results
+print NOMATCH join "\n", @nonmatches, "\n";
+
+print "$recextractcount record exported\n", scalar @id_no_lines, " lines were in the id number file\n", scalar @nonmatches, " non-matches output to $nonmatchfile\n$runningrecordcount MARC records scanned\n";
+
+close NOMATCH;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+print "\n\nPress Enter to quit";
+<>;
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

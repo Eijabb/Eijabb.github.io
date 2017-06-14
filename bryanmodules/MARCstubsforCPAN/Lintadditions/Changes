@@ -1,0 +1,56 @@
+Revision history for Perl extension MARC::Lintadditions.
+
+
+Version 1.05: Updated Aug. 30-Oct., 2004. Released Oct. , 2004.
+
+ -Moved institution-specific code from check_040 to MARC::QBIerrorchecks.
+ --check_040 still present to check $b language (currently commented-out)
+ -Moved check_037 to MARC::QBIerrorchecks.
+ -Updated check_082 to ensure decimal after 3rd digit in numbers longer than 3 digits.
+ -Moved validate007(\@bytesfrom007) from MARC::BBMARC (to make MARC::Lintadditions more self-contained).
+ -Fixed problem in 6xx check for subfield _2 (changed '==' to 'eq').
+ -Updated validate007(\@bytesfrom007) (bug fixes, misc. revisions)
+ -Updated check_050 to check for unfinished cutters (single capital letter followed by space or nothing)
+
+Version 1.04: Updated Aug. 10-22, 2004. Released Aug. 22, 2004. 
+
+ -Implemented VERSION (uncommented)
+ -Revised check_050 exception (Thank you to all who posted about this).
+ -Moved VERSION HISTORY to end of module.
+ -Added preliminary checking of 245 2nd indicator in check_245 (Thanks to Ian Hamilton).
+
+Version 1.03: Updated July 20-Aug. 7, 2004. Released Aug. 8, 2004.
+
+ -Added check_1xx and check_7xx sets.
+ -Added checks for non-filing indicator in 130, 630, 730, 740 and 830.
+ -Added indicator check for 700--ind1 == 3 -> error.
+ -Added validation of 041 against MARC Code List for Languages.
+ -Added check_028 and check_037.
+ -Removed some variables from warning messages.
+ -Added check_050.
+ -Added check_040 (IOrQBI specific).
+ -Added check_440 and check_490.
+ -Added check_246.
+ -Changed check_245 ending punctuation errors based on MARC21 rule change vs. LCRI 1.0C from Nov. 2003.
+ -Added check for square brackets in 245 $h.
+ -Added check for 260 ending punctuation.
+ 
+Version 1.02: Updated July 2-17, 2004. Released July 18, 2004.
+
+ -Cleaned up some of the documentation
+ -Added global variable in hopes of improving efficiency of language/GAC/country code validation
+ -Modified check_043 and/or C<readcodedata()> to use the new global variable.
+ -Added check_6xx subroutines (600, 610, 611, 630, 650, 651, 655)
+ -Added check for  space between initials in 245 $c in check_245
+ -Added check_042 (valid values: lcac, lccopycat, pcc, nsdp)
+ -Added check_020 (relies upon Business::ISBN module)
+ -Added check_022 (relies upon Business::ISSN module)
+  
+Version 1.01: Updated June 17, 2004. Released June 20, 2004. 
+
+ -Added validation of 043 against GAC list.
+ -Added check_082.
+ -Added checks for $b, $h, $n, and $p in 245.
+ -Other changes/fixes.
+
+Version 1.0 (unnumbered): Released May 31, 2004. Initial version.

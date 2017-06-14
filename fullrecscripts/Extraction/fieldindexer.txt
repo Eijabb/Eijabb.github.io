@@ -1,0 +1,246 @@
+#!perl
+
+=head2 Description
+
+Based on Field Extraction Script. Works in same way, but output is different.
+
+Asks for input file and export file.
+Then asks for three digit field number to extract. 
+Exports that entire field as a string. 
+
+################################
+##Uses MARC::BBMARC subroutines: 
+##as_formatted2(), 
+##startstop_time(), 
+##getthreedigits(), 
+##counting_print ($runningrecordcount).
+######################################
+
+=head2 TO DO
+
+Switch from MARC::File::USMARC to MARC::Record
+
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+
+use strict;
+use MARC::File::USMARC;
+use MARC::BBMARC;
+
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Field Extraction script\n");
+##### File handling initialization ######
+#prompt for updated file
+print ("What is the input file?: ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+
+print ("Export file has count, hdg, and controlnos with that heading, separated by tabs\n");
+print ("Export record file: ");
+#read command line for name of export file
+my $exportfile= <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+
+#protect against overwriting input file
+if ($inputfile =~ /^\Q$exportfile\E$/i) {
+	print "Input file and export file are identical.\nProgram will exit now. Press Enter to continue\n";
+	<>;
+	die;
+}
+#check to see if export file exists
+if (-f $exportfile) {
+	print "That file, $exportfile exists already.\nOverwrite? ";
+	my $continue = <>;
+	chomp $continue;
+	unless ($continue =~ /^y(es)?$/i) {
+	#exit program if user typed anything other than y or yes (in any cap)
+		print "Exiting (press Enter)\n"; <>; die;
+	}
+}
+
+open(EXTRACTEDFIELDS, ">$exportfile") or die "Cannot open extractedfields, $!";
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+#initialize $infile as new usmarc file object
+my $infile = MARC::File::USMARC->in( "$inputfile" );
+
+########## Start extraction #########
+
+#prompt for field to extract
+print ("Enter three-digit tag number to extract: ");
+my $extractfieldnumber = MARC::BBMARC::getthreedigits();
+chomp $extractfieldnumber;
+
+my @indicators;
+my @indicatortypes;
+
+##### fill indicators if not control field #####
+if (($extractfieldnumber >= "010")|| ($extractfieldnumber =~ /\./)) {
+print ("That\'s a field with indicators\n");
+my ($gotindicators, $gotindicatortypes) =  MARC::BBMARC::getindicators();
+print ("You entered $$gotindicators[1] for firstindicator\n and $$gotindicators[2] for secondindicator\n");
+####### dereference indicator arrays for easier manipulation ###
+@indicators = @$gotindicators;
+@indicatortypes = @$gotindicatortypes;
+} #if indicators
+
+#prompt for keeping the tagno and indicators in the output heading
+print "Keep tag numbers and indicators in heading? (y/n) ";
+my $keeptags = <>;
+chomp $keeptags;
+#set $keeptags according to received values
+##default to remove tags
+if ($keeptags =~ /^y/i) {
+	$keeptags = 1;
+}
+elsif ($keeptags =~ /^n/i) {
+	$keeptags = 0;
+}
+else {$keeptags = 0;}
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+
+my $updatedcount=0;
+my $runningrecordcount=0;
+my %counts;
+
+#### Start while loop through records in file #####
+while ( my $marc = $infile->next() ) {
+	### loop through each field having desired tag ###
+	
+	my $heading;
+
+	for my $field ( $marc->field("$extractfieldnumber") ) {
+
+		# wildcard (period) '6..' evaluates to 6 in the comparison, so use the second condition to account for that 
+		if (($extractfieldnumber < "010")  && ($extractfieldnumber !~ /\./)) {$heading = $field->as_string();}
+		else {
+			##heading is not control field, so determine desired indicator extraction ##
+##################################################
+#### Indicator determination and field extract ###
+##################################################
+			# 1st any, 2nd any
+			if (($indicatortypes[1] eq 'any') && ($indicatortypes[2] eq 'any')) 
+				{$heading = $field->as_formatted2();}
+			##### 1st any, 2nd digit or blank
+			elsif (($indicatortypes[1] eq 'any') && ($indicatortypes[2] eq 'blank' || $indicatortypes[2] eq 'digit')) 
+				{$heading = $field->as_formatted2() if ($field->indicator(2) eq $indicators[2]);}
+			##### 1st digit or blank, 2nd any
+			elsif ((($indicatortypes[1] eq 'blank' || $indicatortypes[1] eq 'digit') && ($indicatortypes[2] eq 'any'))) 
+				{$heading = $field->as_formatted2() if ($field->indicator(1) eq $indicators[1]);}
+			##### 1st digit or blank, 2nd digit or blank
+			elsif ((($indicatortypes[1] eq 'blank' || $indicatortypes[1] eq 'digit') && ($indicatortypes[2] eq 'blank' || $indicatortypes[2] eq 'digit'))) 
+				{$heading = $field->as_formatted2() if (($field->indicator(1) eq $indicators[1]) && ($field->indicator(2) eq $indicators[2]));}
+			###### Add other cases if this appears: #####
+			else {print "another indicator case needed\n";}
+			} # else not control field #
+##################################################
+##################################################
+
+		my $controlno = $marc->field('001')->as_string() if ($marc->field('001'));
+		# if the field to extract exists, count it and associate its control number
+
+		if (defined ($heading)) {
+
+			#remove tag and indicators if desired
+			unless ($keeptags) {
+				#remove count, tab, 3 digit tagno, space, ind1, ind2,
+#space, subfield indicator, subfield code, and tab
+				$heading =~ s/^\d{3}\s[ \d][ \d]\s\@\w\t//;
+			} #unless keeping tag info
+
+			# Now count it
+
+			$updatedcount++;
+			### push control numbers onto respective field ###
+			my $controlarrayref = \@{$counts{$heading}->{control}};
+			push (@{$controlarrayref}, ($controlno, "\t"));
+
+			###
+		} # if heading defined
+	} # for
+	$runningrecordcount++;
+	MARC::BBMARC::counting_print ($runningrecordcount);
+} # while
+
+$infile->close();
+
+my @headings = sort keys %counts;
+
+# Print out the results
+for my $heading ( @headings ) {
+
+	#print heading, tab
+	print EXTRACTEDFIELDS ( "$heading\t");
+	##extra tab between heading helps in splitting the control numbers off later
+	#print tab, controlnos (separated by tabs)
+	print EXTRACTEDFIELDS join ("\t", "\t@{$counts{$heading}->{control}}\n");
+}
+
+
+
+print "$updatedcount fields are defined\n";
+close EXTRACTEDFIELDS;
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+print "\n\nPress Enter to quit";
+<>;
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

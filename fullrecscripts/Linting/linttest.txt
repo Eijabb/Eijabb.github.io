@@ -1,0 +1,118 @@
+#!perl
+
+=head2 Description
+
+Lint test program prompts for input file of MARC records.
+Compares the records against coding definitions in Lint module.
+Writes out three files: 
+lintederrors.mrc (records with possible errors in raw MARC)
+lintwarnings.txt (reported warnings and associated control numbers, tab separation)
+controlnoslinted.txt (just control number of problem records)
+
+
+=cut
+
+########################
+### Program template ###
+########################
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+
+use MARC::BBMARC;
+use MARC::File::USMARC;
+use MARC::Lint;
+
+##Time coding to wrap around program to determine how long execution takes:
+
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+# do bunch of stuff here
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to lint check\n");
+print ("MacOS: separate by colons, e.g. :testmarcfiles:[filename] if script is at same level\n");
+print ("What file do you want to check?:");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+
+my $controlnowerrors = 'C:\Bflo\indrv\controlnoslinted.txt';
+open(CONTROLNOERRORSOUT, ">$controlnowerrors")  or die "cannot open controlnoerrorsout $!";
+print ("Overwriting output file: $controlnowerrors\n");
+
+my $exportfile= 'C:\Bflo\indrv\lintwarnings.txt';
+my $exportfile2= 'C:\Bflo\indrv\lintederrors.mrc';
+print ("Overwriting output file: $exportfile\n");
+print ("Overwriting output file: $exportfile2\n");
+open(OUT, ">$exportfile") or die "cannot open out";
+open(OUTRAW, ">$exportfile2") or die "cannot open outraw";
+my $lint = new MARC::Lint;
+
+my $filename = $inputfile;
+
+my $file = MARC::File::USMARC->in( $filename );
+
+my $errorcount=0;
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+############################################
+
+while ( my $marc = $file->next() ) {
+$lint->check_record( $marc );
+
+my $controlno =$marc->field('001')->as_string();
+
+# Print the errors that were found
+if (my @haswarnings = $lint->warnings){
+print OUT join( "\t", @haswarnings, "\t$controlno");
+print OUT ("\n\n");
+print OUTRAW ($marc->as_usmarc());
+print CONTROLNOERRORSOUT ("$controlno\n");
+$errorcount++
+}
+
+#####################################
+## Place the following within loop ##
+#####################################
+$runningrecordcount++;
+MARC::BBMARC::counting_print ($runningrecordcount);
+
+} # while
+
+print $errorcount;
+print OUT ("\n$errorcount\n");
+
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+print "\n\nPress Enter to quit";
+<>;
+
+#####################
+### END OF PROGRAM ##
+#####################

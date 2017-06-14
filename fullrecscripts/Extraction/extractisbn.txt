@@ -1,0 +1,154 @@
+#!perl
+
+=head2
+
+Extracts ISBN from file of MARC records.
+
+=cut
+
+###########################
+### Initialize includes ###
+### and basic needs     ###
+###########################
+use strict;
+use MARC::Batch;
+use MARC::BBMARC;
+##########################
+## Time coding routines ##
+## Print start time and ##
+## set start variable   ##
+##########################
+
+use Time::HiRes qw(  tv_interval );
+# measure elapsed time 
+my $t0 = [Time::HiRes::time()];
+my $startingtime = MARC::BBMARC::startstop_time();
+#########################
+### Start main program ##
+#########################
+
+print ("Welcome to Subfield Extraction script\n");
+
+##### File handling initialization ######
+#prompt for input file
+print ("What is the input file? ");
+my $inputfile=<>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print ("What is the export file? ");
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+open(OUT, ">$exportfile");
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+#initialize $batch as new MARC::Batch object
+my $batch = MARC::Batch->new('USMARC', "$inputfile");
+########## Start extraction #########
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+my $runningrecordcount=0;
+###################################################
+
+############################################
+# Set start time for main calculation loop #
+############################################
+my $t1 = [Time::HiRes::time()];
+
+my $updatedcount=0;
+my $runningrecordcount=0;
+my %counts;
+
+#### Start while loop through records in file #####
+while ( my $record = $batch->next() ) {
+
+	my $controlno = $record->field('001')->as_string() if ($record->field('001'));
+
+	### loop through each 020 field ###
+	for my $field020 ( $record->field("020") ) {
+		my $isbn = $field020->subfield('a') if ($field020->subfield('a'));
+		# if the field to extract exists, count it and associate its control number
+
+		if (defined ($isbn)) {
+			#remove any hyphens
+			$isbn =~ s/\-//g;
+			#remove nondigits
+			$isbn =~ s/^\D*(\d{9,12}[X\d])\b.*$/$1/;
+			
+			# Now count it
+
+			$updatedcount++;
+			### push control numbers onto respective field ###
+			my $controlarrayref = \@{$counts{$isbn}->{control}};
+			push (@{$controlarrayref}, ($controlno, "\t"));
+
+			###
+		} # if isbn defined
+	} # for
+	$runningrecordcount++;
+	MARC::BBMARC::counting_print ($runningrecordcount);
+} # while
+
+### Removed sorting due to nonfunctional sorting ###
+my @isbns = keys %counts;
+
+# Print out the results
+for my $isbn ( @isbns ) {
+	#print count, tab, field020, tab
+	printf OUT ( "%d\t%s\t", (scalar @{$counts{$isbn}->{control}})/2, "$isbn\t");
+
+#print tab, controlnos (separated by tabs)
+print OUT join ("\t", "@{$counts{$isbn}->{control}}\n");
+}
+
+
+
+print "$updatedcount fields are defined\n";
+close OUT;
+##########################
+### Main program done.  ##
+### Report elapsed time.##
+##########################
+
+my $elapsed = tv_interval ($t0);
+my $calcelapsed = tv_interval ($t1);
+print sprintf ("%.4f %s\n", "$elapsed", "seconds from execution\n");
+print sprintf ("%.4f %s\n", "$calcelapsed", "seconds to calculate\n");
+my $endingtime = MARC::BBMARC::startstop_time();
+print "Started at $startingtime\nEnded at $endingtime";
+
+if ($^O eq 'MacOS') {
+#set creator and type to BBEdit and Text
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+}
+
+print "\n\nPress Enter to quit";
+<>;
+
+
+#####################
+### END OF PROGRAM ##
+#####################
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

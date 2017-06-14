@@ -1,0 +1,102 @@
+#!perl
+
+=head2 NAME
+
+Error report count
+
+=head2 DESCRIPTION
+
+Input is the result of lintallchecks.pl.
+Reads each line.
+Removes control number and title from start of line.
+Puts errors into hash, with count of those errors.
+Outputs each error on a line with the count of occurances for that error.
+Outputs 2 files:
+1. Sorted by error text (alphabetical).
+2. Sorted by count (numerical).
+
+=cut 
+
+use strict;
+use warnings;
+#use MARC::BBMARC;
+
+print "Input file: ";
+my $inputfile = <>;
+chomp $inputfile;
+$inputfile =~ s/^\"(.*)\"$/$1/;
+print "Export file: ";
+my $exportfile = <>;
+chomp $exportfile;
+$exportfile =~ s/^\"(.*)\"$/$1/;
+my $exportfile2 = $exportfile.'2.txt';
+open (IN, "<$inputfile") || die ("can't open in");
+open (OUT, ">$exportfile") || die ("can't open out");
+open (OUT2, ">$exportfile2") || die ("can't open out2");
+
+#if using MacPerl, set creator and type to BBEdit and Text
+if ($^O eq 'MacOS') {
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile);
+MacPerl::SetFileInfo('R*ch', 'TEXT', $exportfile2);
+
+}
+
+my $linecount = 0;
+my %counts;
+#line has controlno, title, and then errors, separated by tab
+while (my $line = <IN>) {
+chomp $line;
+$linecount++;
+
+#break up line into individual parts
+my @errormessages = split "\t", $line;
+#remove controlno
+my $controlno = shift @errormessages;
+#remove title
+my $title = shift @errormessages;
+foreach my $errortxt (@errormessages) {
+### count errors ###
+++$counts{$errortxt};
+}
+### add running count later
+#$runningrecordcount++;
+#MARC::BBMARC::counting_print ($runningrecordcount);
+} # while
+
+
+my @errors = sort keys %counts;
+my @errorcounts = reverse sort { $counts{$a} <=> $counts{$b} } keys %counts;
+
+# Print out the results
+for my $error ( @errors ) {
+print OUT "$error\t$counts{$error}\n";
+}
+for my $error2 (@errorcounts) {
+print OUT2 "$counts{$error2}\t$error2\n";
+}
+
+print "$linecount lines found\n", scalar @errors, " errors found\n";
+
+##########################
+
+close IN;
+close OUT;
+close OUT2;
+print "Press Enter to quit";
+<>;
+
+=head1 LICENSE
+
+This code may be distributed under the same terms as Perl itself. 
+
+Please note that this code is not a product of or supported by the 
+employers of the various contributors to the code.
+
+=head1 AUTHOR
+
+Bryan Baldus
+eija [at] inwave [dot] com
+
+Copyright (c) 2003-2004
+
+=cut

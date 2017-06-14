@@ -1,0 +1,49 @@
+#!perl
+
+=head2 Description
+
+Derived from sortcleanedlines.pl.
+In progress. I don't recall why I created this file.
+
+
+
+=cut
+
+print "Input file: "; 
+$inputfile = <>; 
+chomp $inputfile; 
+$inputfile =~ s/^\"(.*)\"$/$1/; 
+print "Export file: "; 
+$exportfile = <>; 
+chomp $exportfile; 
+$exportfile =~ s/^\"(.*)\"$/$1/; 
+open (IN, "<$inputfile") || die ("can't open in"); 
+open (OUT, ">$exportfile") || die ("can't open out"); 
+my $linecount = 0; 
+my %countlines; 
+while (my $line = <IN>) { 
+chomp $line; 
+
+##break data from control number list
+my @linearray = split ("\t\t", $line);
+##break subfields (and count) into slots of array
+my @headingarray = split ("\t", $linearray[0]);
+#accurate if from fieldextractionscript
+my $headingcount = $headingarray[0];
+
+############# Finish this part
+##############
+##############
+
+$countlines{$line}++; 
+$linecount++; 
+} 
+for my $sortedline (sort keys %countlines) 
+{print OUT "$sortedline\n" 
+;} 
+close IN; 
+close OUT; 
+
+print "$linecount lines cleaned\n"; 
+print "Press Enter to quit"; 
+<>;
