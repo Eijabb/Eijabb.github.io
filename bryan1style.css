@@ -1,0 +1,21 @@
+body {
+    background-color: white;
+}
+h1 {
+	
+}
+p.one {
+	border-style: solid;
+	padding-top: 5px;
+	padding-right: 5px;
+	padding-bottom: 5px;
+	padding-left: 5px;
+	font-size: 40px;
+	text-align: center;
+}
+td {
+	height: 50px;
+	width: 5px;
+	vertical-align: bottom;
+	padding: 5px;
+}
